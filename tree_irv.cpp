@@ -298,7 +298,7 @@ double RunTreeIRV(const Ballots &ballots, const Candidates &cands,
 				log << "Minimal manipulation: " << curr_ubound << endl;
 				log << "Manipulated order: ";
 				for(int i = 0; i < best_order_c.size(); ++i){
-					log << cands[best_order_c[i]].id << " ";
+					log << cands[best_order_c[i]].name << " ";
 				}
 				log << endl;
 			}

@@ -57,7 +57,8 @@ struct Config
 	bool compbounds;
 	bool optlog;
 
-	std::map<int,int> id2index;
+    std::map<std::string,int> name2index;
+    std::map<int, std::string> index2name;
 	Strings elect_only;
 
 	Config() : ncandidates(0), totalvotes(0), tightbounds(false),
@@ -78,7 +79,7 @@ class STVException
 
 struct Candidate
 {
-	int id;
+	std::string name;
 	int index;
 	double sum_votes;
 
@@ -92,8 +93,8 @@ struct Candidate
 
 	int standing;
 
-	Candidate() : id(0), index(0), sum_votes(0), party("IND"),
-		sim_votes(0), standing(1) {}
+	Candidate() : name("n/a"), index(0), sum_votes(0), party("IND"),
+                  sim_votes(0), standing(1) {}
 };
 
 typedef std::vector<Candidate> Candidates;

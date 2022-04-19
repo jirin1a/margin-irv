@@ -328,7 +328,7 @@ double distance(const Ballots &ballots, const Candidates &cand,
 						break;
 					}
 					else if(position[bt.prefs[j]] > round){
-						// Ballot with id 'i' will be in bt.prefs[j]'s tally
+						// Ballot with name 'i' will be in bt.prefs[j]'s tally
 						poss_tally[bt.prefs[j]].push_back(i);
 						break;
 					} 

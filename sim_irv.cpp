@@ -51,7 +51,7 @@ int SimIRV(const Ballots &ballots, const Doubles &votecounts, int &winner,
 			}
 
 			if(log){
-				cout << "  Candidate " << ct.id << " " << ct.sim_votes << endl;
+				cout << "  Candidate " << ct.name << " " << ct.sim_votes << endl;
 			}
 		}
 
@@ -82,8 +82,8 @@ int SimIRV(const Ballots &ballots, const Doubles &votecounts, int &winner,
 			order_c.push_back(lowest_idx);
 
 			if(log){
-				cout << "Round " << r << ", Candidate " << 
-					e.id << " eliminated." << endl;
+				cout << "Round " << r << ", Candidate " <<
+                     e.name << " eliminated." << endl;
 			}
 
 			e.standing = 0;
@@ -120,16 +120,16 @@ int SimIRV(const Ballots &ballots, const Doubles &votecounts, int &winner,
 
 				ct.sim_votes += total;
 				if(log) {
-					cout << total << " votes distributed from " << e.id <<
-						" to " << ct.id << endl;
+					cout << total << " votes distributed from " << e.name <<
+                         " to " << ct.name << endl;
 				}
 			}
 			if(log){
 				for(int c = 0; c < cand.size(); ++c){
 					Candidate &ct = cand[c];
 					if(ct.standing == 1){
-						cout << "  Candidate " << ct.id << " " << 
-							ct.sim_votes << endl;
+						cout << "  Candidate " << ct.name << " " <<
+                             ct.sim_votes << endl;
 					}
 				}
 				cout << endl;
@@ -144,7 +144,7 @@ int SimIRV(const Ballots &ballots, const Doubles &votecounts, int &winner,
 				last_round_margin = ct.sim_votes - last_round_margin;
 				winner = c;
 				if(log){
-					cout << "Candidate " << ct.id << " elected." << endl;
+					cout << "Candidate " << ct.name << " elected." << endl;
 				}
 				break;
 			}
