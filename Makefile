@@ -44,7 +44,7 @@ CXXSOURCES = \
 	
 CXXOBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.$(SUFFIX), $(CXXSOURCES))
 
-all : $(PROGRAM)
+all : clean $(PROGRAM)
 
 $(PROGRAM) : $(CXXOBJECTS)
 	$(CXX) -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS) 
