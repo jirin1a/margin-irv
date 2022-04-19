@@ -57,7 +57,7 @@ struct Config
 	bool compbounds;
 	bool optlog;
 
-	std::map<int,int> id2index;
+	std::map<std::string,int> id2index;
 	Strings elect_only;
 
 	Config() : ncandidates(0), totalvotes(0), tightbounds(false),
@@ -78,7 +78,7 @@ class STVException
 
 struct Candidate
 {
-	int id;
+	std::string id;
 	int index;
 	double sum_votes;
 

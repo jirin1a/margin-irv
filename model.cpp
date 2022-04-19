@@ -100,14 +100,14 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 		config.ncandidates = columns.size();
 		for(int i = 0; i < columns.size(); ++i)
 		{
-			int id = ToType<int>(columns[i]);
+//			int id = ToType<int>(columns[i]);  // original required int but we allow string (cand names)
 			Candidate c;
 			c.index = i;
-			c.id = id;
+			c.id = columns[i];
 
 			candidates.push_back(c);
 
-			config.id2index.insert(pair<int,int>(id,i));
+			config.id2index.insert(pair<std::string,int>(c.id,i));
 		}
 
 		// Read party affiliations
@@ -138,8 +138,8 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 			for(int i = 0; i < columns.size()-1; ++i)
 			{
 				if(columns[i] == "") continue;
-				int ccode = ToType<int>(columns[i]);
-				int index = config.id2index.find(ccode)->second;
+				std:string name = columns[i];
+				int index = config.id2index.find(name)->second;
 					
 				if(find(b.prefs.begin(),
 					b.prefs.end(), index) != b.prefs.end())
