@@ -3,9 +3,9 @@ PROGRAM = marginirv
 RM = rm -rf
 OBJDIR = obj
 
-CPLEX=/Applications/CPLEX_Studio_Community221/
-CPLEXLIB=$(CPLEX)/cplex/lib/x86-64_osx/static_pic
-CONCERTLIB=$(CPLEX)/concert/lib/x86-64_osx/static_pic/
+CPLEX=/opt/ibm/ILOG/CPLEX_Studio129
+CPLEXLIB=$(CPLEX)/cplex/lib/x86-64_linux/static_pic/
+CONCERTLIB=$(CPLEX)/concert/lib/x86-64_linux/static_pic/
 
 
 BASEDIRS = \
@@ -25,12 +25,9 @@ CXXFLAGS = -Wall -pedantic -g $(INCLUDEDIRS) -m64 -fPIC \
 	-Wno-attributes -Wno-ignored-attributes -fpermissive -Wno-sign-compare
 
 
-#LDFLAGS =  -lboost_system  -lboost_filesystem \
-#	-L$(CPLEXLIB) -lilocplex -lcplex \
-#	-L$(CONCERTLIB) -lconcert -m64 -lm -pthread -lrt -ldl
 LDFLAGS =  -lboost_system  -lboost_filesystem \
 	-L$(CPLEXLIB) -lilocplex -lcplex \
-	-L$(CONCERTLIB) -lconcert -m64 -lm -pthread -lSystem.B -ldl
+	-L$(CONCERTLIB) -lconcert -m64 -lm -pthread -lrt -ldl
 
 
 RENAME = -o
