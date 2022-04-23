@@ -92,6 +92,9 @@ struct Candidate
 	Ints sim_ballots;
 
 	int standing;
+    int operator==(const Candidate& right)const{
+        return (index == right.index);
+    }
 
 	Candidate() : name("n/a"), index(0), sum_votes(0), party("IND"),
                   sim_votes(0), standing(1) {}
@@ -104,6 +107,10 @@ struct Ballot
 	int tag;
 	double votes; // Number of votes present with this signature
 	Ints prefs;
+
+    int operator==(const Ballot& right)const{
+        return (prefs == right.prefs);
+    }
 };
 
 typedef std::vector<Ballot> Ballots;

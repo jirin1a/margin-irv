@@ -14,31 +14,75 @@ jn/04/2022
 using namespace std;
 
 
-double test_ilp(const Ballots &ballots, const Candidates &cand,
-                const Config &config, Node &node, double upperbound,
-                double tleft, ofstream &log, bool dolog, bool &timeout){
+void get_promotion_set(const Candidate &winner, const Ballots &ballots, Sig2Sig &B) {
+    /*
+      For each signature (key) will determine all other possible signatures (existing or non-existing)
+      in which winner is promoted (moved up by 1, ... positions, all other order remaining identical)
+      OUTPUT: B
+    */
+    B.clear();
+    for (int bi = 0; bi < ballots.size(); ++bi) {
+        // reverse preferences first for simplicity of indexing
+        Ints rev_prefs = ballots[bi].prefs;
+        reverse(rev_prefs.begin(), rev_prefs.end());
+        // look for winner position in this reversed signature
+        Ints::iterator pi;
+        for (pi = rev_prefs.begin(); pi != rev_prefs.end(); ++pi) if (*pi == winner.index) break;
+        int winner_pos = pi - rev_prefs.begin();
+        // shrink the array by removing the winner
+        if (winner_pos < rev_prefs.size()) rev_prefs.erase(pi);
+        // move up winner from his orig position, or insert winner before pos 1, and up, if he was absent
+        // all insertions are before position winner_pos
+        winner_pos = (winner_pos == rev_prefs.size()) ? 1: winner_pos;
+        set<Ints> prefs_set;  // holds unq promoting signatures (in reverse space)
+        for (pi = rev_prefs.begin() + winner_pos; pi != rev_prefs.end()+1; ++pi) {
+            Ints auxprefs = rev_prefs;
+            auxprefs.insert(pi, winner.index);
+            // reverse back to original ordering
+            reverse(auxprefs.begin(), auxprefs.end());
+            prefs_set.insert(auxprefs);
+        }
+        B.insert(pair<Ints, set<Ints> >(ballots[bi].prefs, prefs_set));
+    }
+}
 
-    double dist = -1;
+double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, Ints &elim_order,
+                const Config &config, ofstream &log, bool dolog){
 
     try{
-        const int ncand = node.order_c.size();
-        Ints position(config.ncandidates, -1);
+        const int ncand = elim_order.size();
+//        // position holds order of elimination of cands in terms of their indexes
+//        Ints position(config.ncandidates, -1);
+//        for(int i = 0; i < node.order_c.size(); ++i){
+//            position[elim_order[i]] = i;
+//        }
 
-        for(int i = 0; i < node.order_c.size(); ++i){
-            position[node.order_c[i]] = i;
+        // convert Ballots to a map signature->count
+        Ballots::const_iterator bi;
+        Sig2N sig2n;
+        for (bi = ballots.cbegin(); bi != ballots.cend(); ++bi) {
+            if (sig2n.find(bi->prefs) == sig2n.end())
+                sig2n[bi->prefs] = bi->votes;
         }
-
-        CreateEquivalenceClasses(ballots, cand, config, node, position);
 
         IloEnv env;
         IloModel cmodel(env);
 
-        // Assume ballots contains all possible rankings, even
-        // if the number of times that ranking was voted for is '0'
-        const int sigs = node.rev_ballots.size();
-
-        IloNumVarArray ps(env, sigs);
-        IloNumVarArray ms(env, sigs);
+        Sig2Sig B;
+        get_promotion_set(w, ballots, B);
+        vector<Sig2Sig::const_iterator> sig2sig_it;
+        Sig2Sig::const_iterator i; // this array maps index->pointer into B
+        for(i = B.cbegin(); i != B.cend(); ++i) {
+            sig2sig_it.push_back(i);
+            // at this time, also expand signature-count map to add signatures that are new (with count=0)
+            for (set<Ints>::iterator auxi = i->second.begin(); auxi != i->second.end(); ++i) {
+                if (sig2n.find(*auxi) == sig2n.end())
+                    sig2n[*auxi] = 0.;
+            }
+        }
+        // HERE I STOPPED. define b's using the sig2n array and cantaloupe. 
+        IloNumVarArray b(env, sig2sig_it.size());
+        IloNumVarArray ns(env, sigs);
         IloNumVarArray ys(env, sigs);
 
         char varname[500];
