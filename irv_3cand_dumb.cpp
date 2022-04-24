@@ -71,8 +71,7 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
         Sig2Sig B;
         get_promotion_set(w, ballots, B);
         vector<Sig2Sig::const_iterator> sig2sig_it;
-        Sig2Sig::const_iterator i; // this array maps index->pointer into B
-        for(i = B.cbegin(); i != B.cend(); ++i) {
+        for(Sig2Sig::const_iterator i = B.cbegin(); i != B.cend(); ++i) {
             sig2sig_it.push_back(i);
             // at this time, also expand signature-count map to add signatures that are new (with count=0)
             for (set<Ints>::iterator auxi = i->second.begin(); auxi != i->second.end(); ++i) {
@@ -80,32 +79,32 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
                     sig2n[*auxi] = 0.;
             }
         }
-        // HERE I STOPPED. define b's using the sig2n array and cantaloupe. 
+
         IloNumVarArray b(env, sig2sig_it.size());
-        IloNumVarArray ns(env, sigs);
-        IloNumVarArray ys(env, sigs);
+        IloNumVarArray ys(env, sig2n.size());
 
         char varname[500];
 
-        IloExpr balance(env);
-
-        double lb = max(0.0, node.dist);
-        double ub = max(lb, upperbound);
-
+        IloExpr sum_s1(env);
+        IloExpr sum_s2(env);
         IloExpr obj(env);
 
-        for(int i = 0; i < sigs; ++i){
-            const double ns = node.rev_ballots[i].votes;
+        // define all b_s1_s2 transitions
+        for(int i = 0; i < sig2sig_it.size(); ++i){
+            // b_s1_s2 - the promoting transition between two signatures. indexed via sig2sig_it vector
+            int ns = (int) sig2n[sig2sig_it[i]->first];
+            sprintf(varname, "vb_%d", i);
+            b[i] = IloNumVar(env, 0, ns, ILOINT, varname);
 
-            // p_s variable: number of ballots modified so that their
-            // new signature is 's'
-            sprintf(varname, "vps_%d", i);
-            if(ncand == config.ncandidates){
-                ps[i] = IloNumVar(env, 0, ub, ILOINT, varname);
-            }
-            else{
-                ps[i] = IloNumVar(env, 0, ub, ILOFLOAT, varname);
-            }
+        // over all unique signatures
+        // collect sums over outgoing and incoming
+        Sig2N::const_iterator it;
+        int i;
+        for(i = 0, it = sig2n.cbegin(); i < sig2n.size(); ++i, ++it) {
+            // outgoing
+            // TODO search here for all transitions going out to *it, similar for the other way
+            if (it->first == )
+        }
 
             // m_s variable: number of ballots whose signature in the
             // original profile is 's', but are modified to something
