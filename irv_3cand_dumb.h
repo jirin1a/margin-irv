@@ -7,6 +7,7 @@
 
 #include "model.h"
 typedef std::map<Ints, std::set<Ints> > Sig2Sig;
+typedef std::pair<Ints, Ints> Sig2SigPair;
 typedef std::map<Ints, double> Sig2N;
 //double distance(const Ballots &ballots, const Candidates &cand,
 //	const Config &config, Node &node, double upperbound,

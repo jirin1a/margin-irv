@@ -46,16 +46,18 @@ void get_promotion_set(const Candidate &winner, const Ballots &ballots, Sig2Sig 
     }
 }
 
+
 double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, Ints &elim_order,
                 const Config &config, ofstream &log, bool dolog){
 
+    double dist = -1.;
     try{
         const int ncand = elim_order.size();
-//        // position holds order of elimination of cands in terms of their indexes
-//        Ints position(config.ncandidates, -1);
-//        for(int i = 0; i < node.order_c.size(); ++i){
-//            position[elim_order[i]] = i;
-//        }
+        // position holds order of elimination of cands in terms of their indexes
+        Ints position(config.ncandidates, -1);
+        for(int i = 0; i < elim_order.size(); ++i){
+            position[elim_order[i]] = i;
+        }
 
         // convert Ballots to a map signature->count
         Ballots::const_iterator bi;
@@ -63,6 +65,8 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
         for (bi = ballots.cbegin(); bi != ballots.cend(); ++bi) {
             if (sig2n.find(bi->prefs) == sig2n.end())
                 sig2n[bi->prefs] = bi->votes;
+            else
+                sig2n[bi->prefs] += bi->votes;
         }
 
         IloEnv env;
@@ -70,17 +74,17 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
 
         Sig2Sig B;
         get_promotion_set(w, ballots, B);
-        vector<Sig2Sig::const_iterator> sig2sig_it;
+        vector<Sig2SigPair> sig2sig_pairs;
         for(Sig2Sig::const_iterator i = B.cbegin(); i != B.cend(); ++i) {
-            sig2sig_it.push_back(i);
-            // at this time, also expand signature-count map to add signatures that are new (with count=0)
             for (set<Ints>::iterator auxi = i->second.begin(); auxi != i->second.end(); ++i) {
+                sig2sig_pairs.push_back(make_pair(i->first, *auxi));
+                // at this time, also expand signature-count map to add signatures that are new (with count=0)
                 if (sig2n.find(*auxi) == sig2n.end())
                     sig2n[*auxi] = 0.;
             }
         }
 
-        IloNumVarArray b(env, sig2sig_it.size());
+        IloNumVarArray b(env, sig2sig_pairs.size());
         IloNumVarArray ys(env, sig2n.size());
 
         char varname[500];
@@ -88,57 +92,41 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
         IloExpr sum_s1(env);
         IloExpr sum_s2(env);
         IloExpr obj(env);
+        IloExpr balance(env);
+        int i;
 
-        // define all b_s1_s2 transitions
-        for(int i = 0; i < sig2sig_it.size(); ++i){
+        // define all b_s1_s2 transitions. B variables are indexed shadowing sig2sig_pairs vector order
+        int total_n = 0;
+        for(i = 0; i < sig2sig_pairs.size(); ++i) {
             // b_s1_s2 - the promoting transition between two signatures. indexed via sig2sig_it vector
-            int ns = (int) sig2n[sig2sig_it[i]->first];
+            int ns = (int) sig2n[sig2sig_pairs[i].first];
             sprintf(varname, "vb_%d", i);
             b[i] = IloNumVar(env, 0, ns, ILOINT, varname);
-
+            obj += b[i];
+            total_n += ns;
+        }
         // over all unique signatures
         // collect sums over outgoing and incoming
         Sig2N::const_iterator it;
-        int i;
         for(i = 0, it = sig2n.cbegin(); i < sig2n.size(); ++i, ++it) {
             // outgoing
-            // TODO search here for all transitions going out to *it, similar for the other way
-            if (it->first == )
+            for (int j = 0; j < sig2sig_pairs.size(); ++j)
+                if (sig2sig_pairs[i].first == it->first)
+                    sum_s1 += b[j];
+            // incoming
+            for (int j = 0; j < sig2sig_pairs.size(); ++j)
+                if (sig2sig_pairs[i].second == it->first)
+                    sum_s2 += b[j];
+            int ns = (int) it->second;
+            sprintf(varname, "vns_%d", i);
+            ys[i] = IloNumVar(env, 0, total_n, ILOINT, varname);
+
+            cmodel.add(ns - ys[i] - sum_s1 + sum_s2 == 0);    // balance equation (vote preservation)
+            cmodel.add(sum_s1 <= ns);
+
         }
 
-            // m_s variable: number of ballots whose signature in the
-            // original profile is 's', but are modified to something
-            // other than 's' in the new profile
-            sprintf(varname, "vms_%d", i);
-            if(ncand == config.ncandidates){
-                ms[i] = IloNumVar(env, 0, min(ns, ub), ILOINT, varname);
-            }
-            else{
-                ms[i] = IloNumVar(env, 0, min(ns, ub), ILOFLOAT, varname);
-            }
-
-            // y_s variable: total number of ballots with signature 's'
-            // in the new election profile
-            sprintf(varname, "vys_%d", i);
-
-            ys[i] = IloNumVar(env, 0, min(ns+ub,config.totalvotes),
-                              ILOFLOAT, varname);
-
-            // n_s = total number of ballots with signature 's' in
-            // the original profile.
-            // constraint: n_s + p_s - m_s = y_s
-            //     rewrite: n_s = y_s + m_s - p_s
-            cmodel.add(ns == ys[i] + ms[i] - ps[i]);
-            balance += (ps[i] - ms[i]);
-
-            obj += ps[i];
-        }
-
-        cmodel.add(obj >= lb);
-        cmodel.add(obj <= ub);
         cmodel.add(IloMinimize(env, obj));
-
-        cmodel.add(balance == 0);
 
         // Constraints to ensure elimination order proceeds as stated
         for(int round = 0; round < ncand-1; ++round){
@@ -146,21 +134,21 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
             // (or equal to) votes than everyone still remaining.
             IloExpr yr(env); // Votes in tally of 'e'
 
-            const int ec = node.order_c[round];
+            const int ec = elim_order[round];
 
             Ints2d poss_tally(config.ncandidates);
-
-            for(int i = 0; i < sigs; ++i){
+            Sig2N::const_iterator it;
+            for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it){
                 // will this ballot signature count toward 'ec'
-                const Ballot &bt = node.rev_ballots[i];
-                for(int j = 0; j < bt.prefs.size(); ++j){
-                    if(bt.prefs[j] == ec){
+//                const Ballot &bt = node.rev_ballots[i];
+                for(int j = 0; j < (it->first).size(); ++j){
+                    if((it->first)[j] == ec){
                         yr += ys[i];
                         break;
                     }
-                    else if(position[bt.prefs[j]] > round){
+                    else if(position[(it->first)[j]] > round){
                         // Ballot with name 'i' will be in bt.prefs[j]'s tally
-                        poss_tally[bt.prefs[j]].push_back(i);
+                        poss_tally[(it->first)[j]].push_back(i);
                         break;
                     }
                 }
@@ -169,7 +157,7 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
             for(int j = round+1; j < ncand; ++j){
                 // How many votes does the candidate eliminated in position
                 // 'j' have right now?
-                const int cc = node.order_c[j];
+                const int cc = elim_order[j];
 
                 IloExpr yr_cc(env);
                 const Ints &intally = poss_tally[cc];
@@ -194,11 +182,7 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
         }
 
         cplex.setWarning(env.getNullStream());
-        if(tleft >= 0){
-            cplex.setParam(IloCplex::TiLim, tleft);
-        }
 
-        node.ClearEqClassData();
         bool result = cplex.solve();
 
         if(cplex.getCplexStatus() == IloCplex::Infeasible){
@@ -208,7 +192,6 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
             dist = cplex.getObjValue();
         }
         else{
-            timeout = true;
             dist = cplex.getObjValue();
         }
 
@@ -216,8 +199,7 @@ double test_ilp(const Ballots &ballots, const Candidates &cand, Candidate &w, In
         cmodel.end();
         env.end();
 
-    }
-    catch(IloCplex::Exception e){
+    } catch(IloCplex::Exception e) {
         stringstream ss;
         ss << "CPLEX error in STV distance calc: " << e.getMessage() << endl;
         throw STVException(ss.str());
