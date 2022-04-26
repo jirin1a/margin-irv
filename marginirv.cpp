@@ -25,8 +25,8 @@
 #include "model.h"
 #include "sim_irv.h"
 #include "math.h"
-
 #include "tree_irv.h"
+#include "nonmono_irv_distance.h"
 
 using namespace std;
 
@@ -69,6 +69,7 @@ int main(int argc, const char * argv[])
 		const char *logf = NULL;
 		bool simlog = false;
 		double timelimit = -1;
+        bool debugjiri = false;
 
 		for(int i = 1; i < argc; ++i){
 			if(strcmp(argv[i], "-ballots") == 0 && i < argc-1){
@@ -99,13 +100,21 @@ int main(int argc, const char * argv[])
 				logf = argv[i+1];
 				++i;
 			}
-			else if(strcmp(argv[i], "-electonly") == 0){
-				int n_in_list = atoi(argv[i+1]);
-				for(int j = 0; j < n_in_list; ++j){
-					config.elect_only.push_back(string(argv[i+2+j]));
-				}
-				i += 1 + n_in_list;
-			}
+            else if(strcmp(argv[i], "-electonly") == 0){
+                int n_in_list = atoi(argv[i+1]);
+                for(int j = 0; j < n_in_list; ++j){
+                    config.elect_only.push_back(string(argv[i+2+j]));
+                }
+                i += 1 + n_in_list;
+            }
+            else if(strcmp(argv[i], "-debugjiri") == 0){
+//                int n_in_list = atoi(argv[i+1]);
+//                for(int j = 0; j < n_in_list; ++j){
+//                    config.elect_only.push_back(string(argv[i+2+j]));
+//                }
+                debugjiri = true;
+                ++i;
+            }
 		}
 
 		double upperbound = config.totalvotes;
@@ -124,7 +133,24 @@ int main(int argc, const char * argv[])
 		int winner = -1;
 		int lrmargin = SimIRV(ballots, votecounts, winner,
 			candidates, config, order_c, simlog);
-
+        cout << "JIRIDEBUG: IRV winner is " << candidates[winner].name << endl;
+        string msg("JIRIDEBUG: IRV Elimination order = ");
+        print_elim_order_string(order_c, candidates, msg);
+        cout << msg << endl;
+        if (debugjiri) {
+            static const int arr[] = {0,2,1};
+            Ints elim_order(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+            msg = "JIRIDEBUG: Desired elim order = ";
+            print_elim_order_string(elim_order, candidates, msg);
+            cout << msg << endl;
+            ofstream log;
+            if(logf != NULL)
+                log.open(logf);
+            double objval = nonmono_distance(ballots, candidates, candidates[winner], elim_order, config, log, true);
+            cout << "JIRIDEBUG: objval = " << objval << endl;
+            log.close();
+            exit(0);
+        }
 		// Compile list of alternative winners we wish to consider: will
 		// depend on whether the -electonly flag has been specified.
 		Ints altwinners;
