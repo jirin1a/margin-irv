@@ -138,7 +138,8 @@ int main(int argc, const char * argv[])
         print_elim_order_string(order_c, candidates, msg);
         cout << msg << endl;
         if (debugjiri) {
-            static const int arr[] = {0,2,1};
+//            static const int arr[] = {0,2,1};
+            static const int arr[] = {0,2};
             Ints elim_order(arr, arr + sizeof(arr) / sizeof(arr[0]) );
             msg = "JIRIDEBUG: Desired elim order = ";
             print_elim_order_string(elim_order, candidates, msg);
