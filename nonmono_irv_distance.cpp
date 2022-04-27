@@ -280,49 +280,78 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
 
         cmodel.add(IloMinimize(env, obj));
 
-        // Constraints to ensure elimination order proceeds as stated
-        for(int round = 0; round < partial_ncand - 1; ++round){
-            // The candidate 'ec' eliminated in this round must have less than
-            // (or equal to) votes than everyone still remaining.
-            IloExpr yr(env); // Votes in tally of 'e'
-
-            const int ec = elim_order[round];
-
-            Ints2d poss_tally(config.ncandidates);
-            Sig2N::const_iterator it;
-            for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it){
-                // will this ballot signature count toward 'ec'
-//                const Ballot &bt = node.rev_ballots[i];
-                for(int j = 0; j < (it->first).size(); ++j){
-                    if((it->first)[j] == ec){
-                        yr += ys[i];
-                        break;
+        set<int> defeated;
+        for(int round = 0; round < config.ncandidates; ++round) {
+            int e = elim_order[round];
+            IloExpr ye(env);
+            bool ye_empty = true;
+            for(int opp = 0; opp < config.ncandidates; ++opp) {
+                if(e == opp || defeated.find(opp)!=defeated.end())
+                    continue;
+                IloExpr yopp(env);
+                // we have elim cand and an opponent, look for how many votes goes to each
+                for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it)
+                    for(Ints::const_iterator j = (it->first).begin(); j != (it->first).end(); ++j) {
+                        if (defeated.find(*j)!=defeated.end())
+                            continue; // ignore cands previously eliminated
+                        if (*j == e) {
+                            if (ye_empty) // do this only once
+                                ye += ys[i];
+                        } else if (*j == opp) {
+                            yopp += ys[i];
+                        }
                     }
-                    else if(position[(it->first)[j]] > round){
-                        // Ballot with name 'i' will be in bt.prefs[j]'s tally
-                        poss_tally[(it->first)[j]].push_back(i);
-                        break;
-                    }
-                }
+                ye_empty = false; // for all other opponents, reuse this expression
+                // add this duel to the model
+                cmodel.add(ye <= yopp - 0.01);
             }
-
-            for(int j = round+1; j < partial_ncand; ++j){
-                // How many votes does the candidate eliminated in position
-                // 'j' have right now?
-                const int cc = elim_order[j];
-
-                IloExpr yr_cc(env);
-                const Ints &intally = poss_tally[cc];
-
-                for(int k = 0; k < intally.size(); ++k){
-                    yr_cc += ys[intally[k]];
-                }
-
-                if(intally.size() > 0){
-                    cmodel.add(yr <= yr_cc - 0.01);
-                }
-            }
+            // this cand is now eliminated
+            defeated.insert(e);
         }
+//        // Constraints to ensure elimination order proceeds as stated
+//        for(int round = 0; round < partial_ncand + (partial_ncand==config.ncandidates ? - 1: 0); ++round){
+//            // The candidate 'ec' eliminated in this round must have less than
+//            // (or equal to) votes than everyone still remaining.
+//            IloExpr yr(env); // Votes in tally of 'e'
+//
+//            const int ec = elim_order[round];
+//
+//            Ints2d poss_tally(config.ncandidates);
+//            Sig2N::const_iterator it;
+//            for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it){
+//                // will this ballot signature count toward 'ec'
+////                const Ballot &bt = node.rev_ballots[i];
+//                for(int j = 0; j < (it->first).size(); ++j){
+//                    if((it->first)[j] == ec){
+//                        yr += ys[i];
+//                        break;
+//                    }
+//                    else if(position[(it->first)[j]] > round){
+//                        // Ballot with name 'i' will be in bt.prefs[j]'s tally
+//                        poss_tally[(it->first)[j]].push_back(i);
+//                        break;
+//                    }
+//                }
+//            }
+//
+////            for(int j = round+1; j < partial_ncand; ++j){
+//            for(int j = round+1; j < config.ncandidates; ++j){
+//                // How many votes does the candidate eliminated in position
+//                // 'j' have right now?
+//                const int cc = elim_order[j];
+//
+//                IloExpr yr_cc(env);
+//                const Ints &intally = poss_tally[cc];
+//
+//                for(int k = 0; k < intally.size(); ++k){
+//                    yr_cc += ys[intally[k]];
+//                }
+//
+//                if(intally.size() > 0){
+//                    cmodel.add(yr <= yr_cc - 0.01);
+//                }
+//            }
+//        }
 
         IloCplex cplex(cmodel);
         cplex.exportModel("model.lp");
