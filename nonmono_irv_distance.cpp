@@ -46,102 +46,102 @@ std::string join(InputIt first,
     return ss.str();
 }
 
-int next_mod(vector<int> &mask, int n){
-    int i;
-    for(i = 0; i < n && mask[i]; ++i){
-        mask[i] = 0;
-    }
+//int next_mod(vector<int> &mask, int n){
+//    int i;
+//    for(i = 0; i < n && mask[i]; ++i){
+//        mask[i] = 0;
+//    }
+//
+//    if(i < n){
+//        mask[i] = 1;
+//        return 1;
+//    }
+//    return 0;
+//}
 
-    if(i < n){
-        mask[i] = 1;
-        return 1;
-    }
-    return 0;
-}
 
-
-void CreateEquivalenceClasses(const Ballots &ballots,
-                              const Candidates &cand, const Config &config, Node &node,
-                              const Ints &position){
-    try{
-        const int ncand = node.order_c.size();
-
-        Ints mask(config.ncandidates, 0);
-
-        int cntr = 0;
-        while(next_mod(mask, ncand)){
-            int j = -1;
-            for(int i = 0; i < ncand; ++i){
-                if(mask[i]){
-                    j = i;
-                    break;
-                }
-            }
-
-            if(j < 0) continue;
-
-            vector<int> key(ncand, 0);
-            for(int i = 0; i < ncand; ++i){
-                if(mask[i])
-                    key[i] = 1;
-            }
-
-            Ballot b;
-            b.tag = cntr++;
-            b.votes = 0;
-
-            b.prefs.push_back(node.order_c[j]);
-            for(int i = j+1; i < ncand; ++i){
-                if(mask[i]){
-                    b.prefs.push_back(node.order_c[i]);
-                }
-            }
-
-            node.rev_ballots.push_back(b);
-            node.ballotmap.insert(pair<vector<int>,int>(key, b.tag));
-        }
-
-        for(int b = 0; b < ballots.size(); ++b){
-            const Ballot &bt = ballots[b];
-            Ints key;
-            key.resize(ncand, 0);
-
-            int maxj = 0;
-            for(int i = 0; i < bt.prefs.size(); ++i){
-                int j = position[bt.prefs[i]];
-
-                if(j == -1)
-                    continue;
-
-                if(j >= maxj){
-                    key[j] = 1;
-                    maxj = j;
-
-                    if(j == ncand - 1){
-                        break;
-                    }
-                }
-            }
-
-            if(node.ballotmap.find(key) == node.ballotmap.end()){
-                node.bid2newid[b] = -1;
-                continue;
-            }
-
-            int id = node.ballotmap.find(key)->second;
-            node.rev_ballots[id].votes += bt.votes;
-            node.bid2newid[b] = id;
-        }
-    }
-    catch(STVException &e)
-    {
-        throw e;
-    }
-    catch(...)
-    {
-        throw STVException("Unexpected error in creating eq classes.");
-    }
-}
+//void CreateEquivalenceClasses(const Ballots &ballots,
+//                              const Candidates &cand, const Config &config, Node &node,
+//                              const Ints &position){
+//    try{
+//        const int ncand = node.order_c.size();
+//
+//        Ints mask(config.ncandidates, 0);
+//
+//        int cntr = 0;
+//        while(next_mod(mask, ncand)){
+//            int j = -1;
+//            for(int i = 0; i < ncand; ++i){
+//                if(mask[i]){
+//                    j = i;
+//                    break;
+//                }
+//            }
+//
+//            if(j < 0) continue;
+//
+//            vector<int> key(ncand, 0);
+//            for(int i = 0; i < ncand; ++i){
+//                if(mask[i])
+//                    key[i] = 1;
+//            }
+//
+//            Ballot b;
+//            b.tag = cntr++;
+//            b.votes = 0;
+//
+//            b.prefs.push_back(node.order_c[j]);
+//            for(int i = j+1; i < ncand; ++i){
+//                if(mask[i]){
+//                    b.prefs.push_back(node.order_c[i]);
+//                }
+//            }
+//
+//            node.rev_ballots.push_back(b);
+//            node.ballotmap.insert(pair<vector<int>,int>(key, b.tag));
+//        }
+//
+//        for(int b = 0; b < ballots.size(); ++b){
+//            const Ballot &bt = ballots[b];
+//            Ints key;
+//            key.resize(ncand, 0);
+//
+//            int maxj = 0;
+//            for(int i = 0; i < bt.prefs.size(); ++i){
+//                int j = position[bt.prefs[i]];
+//
+//                if(j == -1)
+//                    continue;
+//
+//                if(j >= maxj){
+//                    key[j] = 1;
+//                    maxj = j;
+//
+//                    if(j == ncand - 1){
+//                        break;
+//                    }
+//                }
+//            }
+//
+//            if(node.ballotmap.find(key) == node.ballotmap.end()){
+//                node.bid2newid[b] = -1;
+//                continue;
+//            }
+//
+//            int id = node.ballotmap.find(key)->second;
+//            node.rev_ballots[id].votes += bt.votes;
+//            node.bid2newid[b] = id;
+//        }
+//    }
+//    catch(STVException &e)
+//    {
+//        throw e;
+//    }
+//    catch(...)
+//    {
+//        throw STVException("Unexpected error in creating eq classes.");
+//    }
+//}
 
 
 void get_promotion_set(const Candidate &winner, const Ballots &ballots, Sig2Sig &B) {
@@ -172,20 +172,18 @@ void get_promotion_set(const Candidate &winner, const Ballots &ballots, Sig2Sig 
     }
 }
 
-// TODO: think about modifying elimination constraints. Perhaps we can test partial elimination
-// with everything else staying. If partial cannot be realized then the sub-combinatorial rest can't either
-double nonmono_distance(Ballots &ballots, const Candidates &cand, const Config &config, Node &node,
+double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, const Config &config, Node &node,
                               double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
 
     double dist = -1.;
     try{
-        Ints elim_order = node.order_c;
-        const int ncand = elim_order.size();
+        Ints elim_order = node.order_c;  // this elim order may be partial (or full)
+        const int partial_ncand = elim_order.size();
         Ints position(config.ncandidates, -1);
         for(int i = 0; i < elim_order.size(); ++i){
             position[elim_order[i]] = i;
         }
-        CreateEquivalenceClasses(ballots, cand, config, node, position);
+//        CreateEquivalenceClasses(ballots, cand, config, node, position);
 
         // convert Ballots to a map signature->count
         Ballots::const_iterator bi;
@@ -281,7 +279,7 @@ double nonmono_distance(Ballots &ballots, const Candidates &cand, const Config &
         cmodel.add(IloMinimize(env, obj));
 
         // Constraints to ensure elimination order proceeds as stated
-        for(int round = 0; round < ncand-1; ++round){
+        for(int round = 0; round < partial_ncand - 1; ++round){
             // The candidate 'ec' eliminated in this round must have less than
             // (or equal to) votes than everyone still remaining.
             IloExpr yr(env); // Votes in tally of 'e'
@@ -306,7 +304,7 @@ double nonmono_distance(Ballots &ballots, const Candidates &cand, const Config &
                 }
             }
 
-            for(int j = round+1; j < ncand; ++j){
+            for(int j = round+1; j < partial_ncand; ++j){
                 // How many votes does the candidate eliminated in position
                 // 'j' have right now?
                 const int cc = elim_order[j];
@@ -334,6 +332,9 @@ double nonmono_distance(Ballots &ballots, const Candidates &cand, const Config &
         }
 
         cplex.setWarning(env.getNullStream());
+        if(tleft >= 0){
+            cplex.setParam(IloCplex::TiLim, tleft);
+        }
 
         bool result = cplex.solve();
 
@@ -344,6 +345,7 @@ double nonmono_distance(Ballots &ballots, const Candidates &cand, const Config &
             dist = cplex.getObjValue();
         }
         else{
+            timeout = true;
             dist = cplex.getObjValue();
         }
 

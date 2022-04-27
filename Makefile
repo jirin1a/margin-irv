@@ -41,7 +41,7 @@ CXXSOURCES = \
 	model.cpp \
 	tree_irv.cpp \
 	irv_distance.cpp \
-	irv_3cand_dumb.cpp
+	nonmono_irv_distance.cpp
 	
 CXXOBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.$(SUFFIX), $(CXXSOURCES))
 

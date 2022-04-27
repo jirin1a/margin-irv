@@ -146,7 +146,11 @@ int main(int argc, const char * argv[])
             ofstream log;
             if(logf != NULL)
                 log.open(logf);
-            double objval = nonmono_distance(ballots, candidates, candidates[winner], elim_order, config, log, true);
+            bool timeout_flag = false;
+            Node node(candidates.size(), ballots.size());
+            node.order_c = elim_order;
+            double objval = nonmono_distance(candidates[winner], ballots, candidates, config, node,
+                                             -1., -1., log, true, timeout_flag);
             cout << "JIRIDEBUG: objval = " << objval << endl;
             log.close();
             exit(0);
