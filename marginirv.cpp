@@ -149,6 +149,7 @@ int main(int argc, const char * argv[])
             bool timeout_flag = false;
             Node node(candidates.size(), ballots.size());
             node.order_c = elim_order;
+            node.dist = -1;
             double objval = nonmono_distance(candidates[winner], ballots, candidates, config, node,
                                              -1., -1., log, true, timeout_flag);
             cout << "JIRIDEBUG: objval = " << objval << endl;

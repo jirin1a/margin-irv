@@ -196,7 +196,7 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
         }
 
         double lb = max(0.0, node.dist);
-        double ub = max(lb, upperbound);
+        double ub = max(lb, upperbound);  // ub may be revised later if upperbound < 0
 
         IloEnv env;
         IloModel cmodel(env);
@@ -216,7 +216,7 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
         IloNumVarArray b(env, sig2sig_pairs.size());
         IloNumVarArray ys(env, sig2n.size());
 
-        char varname[500];
+        char varname[1000];
 
         IloExpr obj(env);
         IloExpr balance(env);
@@ -273,6 +273,8 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
             sum_s2.end();
 
         }
+        if (upperbound < 0)
+            ub = total_n;
         cmodel.add(obj >= lb);
         cmodel.add(obj <= ub);
 
