@@ -31,13 +31,12 @@
 using namespace std;
 
 void usage(void) {
-    cerr << "USAGE:" endl;
-    cerr << "\t-ballots <fn>" endl;
-    cerr << "\t-simlog" endl;
-    cerr << "\t-optlog" endl;
-    cerr << "\t-tlimit <nsecs>" endl;
-    cerr << "\t-logfile <fn>" endl;
-    cerr << "USAGE:" endl;
+    cerr << "USAGE:" << endl;
+    cerr << "\t-ballots <fn>" << endl;
+    cerr << "\t-simlog" << endl;
+    cerr << "\t-optlog" << endl;
+    cerr << "\t-tlimit <nsecs>" << endl;
+    cerr << "\t-logfile <fn>" << endl;
 }
 
 int main(int argc, const char *argv[]) {

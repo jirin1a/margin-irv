@@ -49,10 +49,10 @@ CXXOBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.$(SUFFIX), $(CXXSOURCES))
 all : clean $(PROGRAM1)
 
 $(PROGRAM1) : analyzeirv.cpp $(CXXOBJECTS)
-	$(CXX) analyzeirv.cpp -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS)
+	$(CXX) analyzeirv.cpp -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS) $(CXXFLAGS)
 
 $(PROGRAM2) : marginirv.cpp $(CXXOBJECTS)
-	$(CXX) marginirv.cpp -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS)
+	$(CXX) marginirv.cpp -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS) $(CXXFLAGS)
 
 $(OBJDIR)/%.$(SUFFIX) : %.cpp
 	@mkdir -p $(@D)

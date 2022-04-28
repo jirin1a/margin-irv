@@ -67,15 +67,20 @@ void ExpandToGetChildren(const NMNode &n, NMNodes &children) {
         return;
     for (SInts::const_iterator it = n.remcand.begin();
          it != n.remcand.end(); ++it) {
-        // if this is the second-to-last round expansion, enforce expanding by the irv winner
-        // (other he will be the one left for the last round)
-        if (n.remcand.size() == 2 && *(it) != n.irv_winner)
+        // if this is the second-to-last round expansion, and the irv_winner still hasn't been placed,
+        // enforce expanding by the irv winner
+        // (otherwise he will be the one left for the last round)
+        if (n.remcand.size() == 2 && n.remcand.find(n.irv_winner)!=n.remcand.end() && *(it) != n.irv_winner)
             continue;
         NMNode newn(n.irv_winner);
         newn.elim_seq = n.elim_seq;
-        newn.elim_seq.insert(newn.elim_seq.begin(), *it);
+        newn.elim_seq.push_back(*it);
         newn.remcand = n.remcand;
         newn.remcand.erase(*it);
+        if (newn.remcand.size()==1) { // add the very last candidate at the same time
+            newn.elim_seq.push_back(*(newn.remcand.begin()));
+            newn.remcand.erase(*(newn.remcand.begin()));
+        }
         newn.dist = n.dist;
 
         children.push_back(newn);
