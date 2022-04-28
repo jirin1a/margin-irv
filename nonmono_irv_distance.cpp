@@ -281,7 +281,7 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
         cmodel.add(IloMinimize(env, obj));
 
         set<int> defeated;
-        for(int round = 0; round < config.ncandidates; ++round) {
+        for(int round = 0; round < elim_order.size() + (elim_order.size()==config.ncandidates ? - 1: 0); ++round) {
             int e = elim_order[round];
             IloExpr ye(env);
             bool ye_empty = true;
@@ -297,12 +297,17 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
                         if (*j == e) {
                             if (ye_empty) // do this only once
                                 ye += ys[i];
+                            break;
                         } else if (*j == opp) {
                             yopp += ys[i];
+                            break;
+                        } else {
+                            break;
                         }
                     }
                 ye_empty = false; // for all other opponents, reuse this expression
                 // add this duel to the model
+                cout << ye << " <= " << yopp << endl;
                 cmodel.add(ye <= yopp - 0.01);
             }
             // this cand is now eliminated
