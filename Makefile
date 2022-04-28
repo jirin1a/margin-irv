@@ -1,4 +1,5 @@
-PROGRAM = marginirv
+PROGRAM1 = analyzeirv
+PROGRAM2 = marginirv
 
 RM = rm -rf
 OBJDIR = obj
@@ -36,19 +37,22 @@ LDFLAGS =  -lboost_system  -lboost_filesystem \
 RENAME = -o
 
 CXXSOURCES = \
-	marginirv.cpp \
 	sim_irv.cpp \
 	model.cpp \
 	tree_irv.cpp \
+	nonmono_tree_irv.cpp \
 	irv_distance.cpp \
 	nonmono_irv_distance.cpp
-	
+
 CXXOBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.$(SUFFIX), $(CXXSOURCES))
 
-all : clean $(PROGRAM)
+all : clean $(PROGRAM1)
 
-$(PROGRAM) : $(CXXOBJECTS)
-	$(CXX) -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS) 
+$(PROGRAM1) : analyzeirv.cpp $(CXXOBJECTS)
+	$(CXX) analyzeirv.cpp -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS)
+
+$(PROGRAM2) : marginirv.cpp $(CXXOBJECTS)
+	$(CXX) marginirv.cpp -o ${@} $(CXXOBJECTS) $(LD) $(LDFLAGS)
 
 $(OBJDIR)/%.$(SUFFIX) : %.cpp
 	@mkdir -p $(@D)

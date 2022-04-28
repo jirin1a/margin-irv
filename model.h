@@ -160,6 +160,33 @@ struct Node{
 };
 
 
+struct NMNode{  // NM abbreviates NonMono
+    // Score (or LP evaluation)
+    double dist;
+
+    // Elimination sequence (partial or total), starts with first round, growing toward the last round
+    // This is different from Node
+    Ints elim_seq;
+
+    // Set of candidates *not* in elimination sequence
+    SInts remcand;
+
+    // index of the original IRV winner
+    int irv_winner;
+
+    explicit NMNode(int winner) {
+        dist = -1;
+        irv_winner = winner;
+    }
+
+    void Reset(){
+        dist = -1;
+        remcand.clear();
+    }
+};
+
+
+
 bool ReadBallots(const char *path, Ballots &ballots,
 	Candidates &candidates, Config &config);
 

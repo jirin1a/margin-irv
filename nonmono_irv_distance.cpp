@@ -10,6 +10,7 @@ jn/04/2022
 #include<iostream>
 #include<cmath>
 #include "cplex_utils.h"
+#include "ilcplex/cpxconst.h"  // error codes
 #include "nonmono_irv_distance.h"
 using namespace std;
 
@@ -64,7 +65,7 @@ std::string join(InputIt first,
 //                              const Candidates &cand, const Config &config, Node &node,
 //                              const Ints &position){
 //    try{
-//        const int ncand = node.order_c.size();
+//        const int ncand = node.elim_seq.size();
 //
 //        Ints mask(config.ncandidates, 0);
 //
@@ -90,10 +91,10 @@ std::string join(InputIt first,
 //            b.tag = cntr++;
 //            b.votes = 0;
 //
-//            b.prefs.push_back(node.order_c[j]);
+//            b.prefs.push_back(node.elim_seq[j]);
 //            for(int i = j+1; i < ncand; ++i){
 //                if(mask[i]){
-//                    b.prefs.push_back(node.order_c[i]);
+//                    b.prefs.push_back(node.elim_seq[i]);
 //                }
 //            }
 //
@@ -172,18 +173,17 @@ void get_promotion_set(const Candidate &winner, const Ballots &ballots, Sig2Sig 
     }
 }
 
-double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, const Config &config, Node &node,
+double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
                               double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
 
     double dist = -1.;
     try{
-        Ints elim_order = node.order_c;  // this elim order may be partial (or full)
+        Ints elim_order = node.elim_seq;  // this elim order may be partial (or full)
         const int partial_ncand = elim_order.size();
         Ints position(config.ncandidates, -1);
         for(int i = 0; i < elim_order.size(); ++i){
             position[elim_order[i]] = i;
         }
-//        CreateEquivalenceClasses(ballots, cand, config, node, position);
 
         // convert Ballots to a map signature->count
         Ballots::const_iterator bi;
@@ -313,50 +313,6 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
             // this cand is now eliminated
             defeated.insert(e);
         }
-//        // Constraints to ensure elimination order proceeds as stated
-//        for(int round = 0; round < partial_ncand + (partial_ncand==config.ncandidates ? - 1: 0); ++round){
-//            // The candidate 'ec' eliminated in this round must have less than
-//            // (or equal to) votes than everyone still remaining.
-//            IloExpr yr(env); // Votes in tally of 'e'
-//
-//            const int ec = elim_order[round];
-//
-//            Ints2d poss_tally(config.ncandidates);
-//            Sig2N::const_iterator it;
-//            for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it){
-//                // will this ballot signature count toward 'ec'
-////                const Ballot &bt = node.rev_ballots[i];
-//                for(int j = 0; j < (it->first).size(); ++j){
-//                    if((it->first)[j] == ec){
-//                        yr += ys[i];
-//                        break;
-//                    }
-//                    else if(position[(it->first)[j]] > round){
-//                        // Ballot with name 'i' will be in bt.prefs[j]'s tally
-//                        poss_tally[(it->first)[j]].push_back(i);
-//                        break;
-//                    }
-//                }
-//            }
-//
-////            for(int j = round+1; j < partial_ncand; ++j){
-//            for(int j = round+1; j < config.ncandidates; ++j){
-//                // How many votes does the candidate eliminated in position
-//                // 'j' have right now?
-//                const int cc = elim_order[j];
-//
-//                IloExpr yr_cc(env);
-//                const Ints &intally = poss_tally[cc];
-//
-//                for(int k = 0; k < intally.size(); ++k){
-//                    yr_cc += ys[intally[k]];
-//                }
-//
-//                if(intally.size() > 0){
-//                    cmodel.add(yr <= yr_cc - 0.01);
-//                }
-//            }
-//        }
 
         IloCplex cplex(cmodel);
         cplex.exportModel("model.lp");
@@ -400,8 +356,11 @@ double nonmono_distance(Candidate &w, Ballots &ballots, const Candidates &cand, 
         env.end();
 
     } catch(IloCplex::Exception e) {
+        if (e.getStatus() == CPXERR_NO_SOLN) {
+            return(-1);
+        }
         stringstream ss;
-        ss << "CPLEX error in STV distance calc: " << e.getMessage() << endl;
+        ss << "CPLEX error in STV distance calc: " << e.getMessage() << "Status code = " << e.getStatus() << endl;
         throw STVException(ss.str());
     }
     catch(STVException &e)

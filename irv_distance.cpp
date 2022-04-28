@@ -83,11 +83,11 @@ void ApplyScoringRules(const Ballots &ballots, const Candidates &cand,
 				it != node.remcand.end(); ++it){
 				const Candidate &e = cand[*it];
 				// 'e' must be eliminated before candidates
-				// currently in node.order_c.
+				// currently in node.elim_seq.
 
 				// We need to make sure the primary vote of 'e' is less
 				// than or equal to the number of votes in which each
-				// candidate 'c' in node.order_c is ranked higher than 'e'
+				// candidate 'c' in node.elim_seq is ranked higher than 'e'
 				// (or 'c' appears and 'e' does not). We will have
 				// computed the lower bound as each candidate was added
 				// to the tree, so we only need to focus on the first 

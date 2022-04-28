@@ -133,33 +133,6 @@ int main(int argc, const char * argv[])
 		int winner = -1;
 		int lrmargin = SimIRV(ballots, votecounts, winner,
 			candidates, config, order_c, simlog);
-        cout << "JIRIDEBUG: IRV winner is " << candidates[winner].name << endl;
-        string msg("JIRIDEBUG: IRV Elimination order = ");
-        print_elim_order_string(order_c, candidates, msg);
-        cout << msg << endl;
-        if (debugjiri) {
-//            static const int arr[] = {0,2,1};
-//            static const int arr[] = {2,1,0};
-            static const int arr[] = {2};
-//            static const int arr[] = {0,2};
-//            static const int arr[] = {0};
-            Ints elim_order(arr, arr + sizeof(arr) / sizeof(arr[0]) );
-            msg = "JIRIDEBUG: Desired elim order = ";
-            print_elim_order_string(elim_order, candidates, msg);
-            cout << msg << endl;
-            ofstream log;
-            if(logf != NULL)
-                log.open(logf);
-            bool timeout_flag = false;
-            Node node(candidates.size(), ballots.size());
-            node.order_c = elim_order;
-            node.dist = -1;
-            double objval = nonmono_distance(candidates[winner], ballots, candidates, config, node,
-                                             -1., -1., log, true, timeout_flag);
-            cout << "JIRIDEBUG: objval = " << objval << endl;
-            log.close();
-            exit(0);
-        }
 		// Compile list of alternative winners we wish to consider: will
 		// depend on whether the -electonly flag has been specified.
 		Ints altwinners;
