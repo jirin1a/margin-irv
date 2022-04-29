@@ -39,5 +39,5 @@
 //               search times out).
 double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
                          const Config &config, int upperbound,
-                         double timelimit, const char *logf, bool &timeout, int &dtcntr);
+                         double timelimit, const char *logf, bool &timeout, int &dtcntr, bool debug=false);
 #endif

@@ -1,20 +1,5 @@
 /*
-    Copyright (C) 2016-2019  Michelle Blom
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
 
 #include<iostream>
 #include<fstream>
@@ -27,16 +12,22 @@
 #include <cmath>
 #include "nonmono_tree_irv.h"
 #include "nonmono_irv_distance.h"
+#define YELLOW "\u001b[33;1m"
+#define BLUE "\033[94m"
+#define GREEN "\033[92m"
+#define RED "\033[1m\033[91m"
+#define ENDC "\033[0m"
 
 using namespace std;
 
 void usage(void) {
     cerr << "USAGE:" << endl;
-    cerr << "\t-ballots <fn>" << endl;
-    cerr << "\t-simlog" << endl;
-    cerr << "\t-optlog" << endl;
-    cerr << "\t-tlimit <nsecs>" << endl;
-    cerr << "\t-logfile <fn>" << endl;
+    cerr << "\t-ballots <fn>\t: load ballot profile from fn" << endl;
+    cerr << "\t-simlog\t\t: print IRV rounds" << endl;
+    cerr << "\t-optlog\t\t: log cplex optimization messages" << endl;
+    cerr << "\t-debug\t\t: log more details into logfile" << endl;
+    cerr << "\t-tlimit <nsecs>\t: set maximum run time" << endl;
+    cerr << "\t-logfile <fn>\t: dump logging to thisfile" << endl;
 }
 
 int main(int argc, const char *argv[]) {
@@ -49,6 +40,7 @@ int main(int argc, const char *argv[]) {
         bool simlog = false;
         double timelimit = -1;
         bool debugjiri = false;
+        ofstream log;
 
         if (argc < 3) {
             usage();
@@ -57,15 +49,22 @@ int main(int argc, const char *argv[]) {
 
         for (int i = 1; i < argc; ++i) {
             if (strcmp(argv[i], "-ballots") == 0 && i < argc - 1) {
+                cout << "INFO: Reading ballot info from \"" << argv[i+1] << "\"" << endl;
                 if (!ReadBallots(argv[i + 1], ballots, candidates, config)) {
-                    cout << "Ballot read error. Exiting." << endl;
+                    cerr << "ERROR: Ballot read error. Exiting." << endl;
                     return 1;
                 }
+                cout << "INFO: Done. Read " << ballots.size() << " signatures and " << candidates.size() \
+                << " candidates." << endl;
+
                 ++i;
             } else if (strcmp(argv[i], "-simlog") == 0) {
                 simlog = true;
             } else if (strcmp(argv[i], "-optlog") == 0) {
                 config.optlog = true;
+            } else if (strcmp(argv[i], "-debug") == 0) {
+                cout << "INFO: Will log debug info." << endl;
+                config.debug = true;
             } else if (strcmp(argv[i], "-tlimit") == 0 && i < argc - 1) {
                 timelimit = atoi(argv[i + 1]);
                 ++i;
@@ -75,10 +74,15 @@ int main(int argc, const char *argv[]) {
             } else if (strcmp(argv[i], "-debugjiri") == 0) {
                 debugjiri = true;
                 ++i;
+            } else {
+                cerr << "ERROR: Unrecognized command: " << argv[i] << endl;
+                exit(-1);
             }
         }
 
         double upperbound = config.totalvotes;
+        if (logf != NULL)
+            log.open(logf);
 
         mytimespec start;
         GetTime(&start);
@@ -94,8 +98,8 @@ int main(int argc, const char *argv[]) {
         int winner = -1;
         int lrmargin = SimIRV(ballots, votecounts, winner,
                               candidates, config, order_c, simlog);
-        cout << "JIRIDEBUG: IRV winner is " << candidates[winner].name << endl;
-        string msg("JIRIDEBUG: IRV Elimination order = ");
+        cout << "INFO: IRV winner is " << candidates[winner].name << endl;
+        string msg("INFO: IRV Elimination order = ");
         print_elim_order_string(order_c, candidates, msg);
         cout << msg << endl;
         if (debugjiri) {
@@ -108,17 +112,16 @@ int main(int argc, const char *argv[]) {
             msg = "JIRIDEBUG: Desired elim order = ";
             print_elim_order_string(elim_order, candidates, msg);
             cout << msg << endl;
-            ofstream log;
-            if (logf != NULL)
-                log.open(logf);
             bool timeout_flag = false;
             NMNode node(winner);
             node.elim_seq = elim_order;
             node.dist = -1;
             double objval = nonmono_distance(candidates[winner], ballots, candidates, config, node,
-                                             -1., -1., log, true, timeout_flag);
+                                             -1., -1., log, true, timeout_flag,
+                                             config.debug);
             cout << "JIRIDEBUG: objval = " << objval << endl;
-            log.close();
+            if (log.is_open())
+                log.close();
             exit(0);
         }
 
@@ -128,27 +131,27 @@ int main(int argc, const char *argv[]) {
         bool timeout = false;
         int dtcntr = 0;
         double r = RunNonmonoTreeIRV(ballots, candidates, cw, config,
-                                     upperbound, timelimit, logf, timeout, dtcntr);
-
+                                     upperbound, timelimit, logf, timeout, dtcntr, config.debug);
+        string resultstr;
         if (r == -1) {
-            // Exception was raised.
-            return 1;
+            // No feasible non-monotone solution
+            resultstr = (string)GREEN + "PASS" + (string)ENDC;
+        } else {
+            resultstr = (string)RED + "FAIL" + (string)ENDC;
         }
-
+        cout << "RESULT(monotonicity): " << resultstr << endl;
         mytimespec tend;
         GetTime(&tend);
 
-        if (config.elect_only.empty()) {
-            cout << "LRM:        " << ceil(lrmargin / 2.0) << endl;
-        }
-
         if (timeout) {
-            cout << "Margin LB:  " << r << endl;
+            cout << "WARN: Timed out. Margin LB:  " << r << endl;
         } else {
-            cout << "Margin:     " << r << endl;
+            cout << "INFO: Margin:     " << r << endl;
         }
-        cout << "LPs solved: " << dtcntr << endl;
-        cout << "Total time: " << tend.seconds - start.seconds << endl;
+        cout << "INFO: LPs solved: " << dtcntr << endl;
+        cout << "INFO: Total time: " << tend.seconds - start.seconds << endl;
+        if (log.is_open())
+            log.close();
     }
     catch (exception &e) {
         cout << e.what() << endl;

@@ -13,7 +13,7 @@ typedef std::map<Ints, double> Sig2N;
 //	const Config &config, Node &node, double upperbound,
 //	double tleft,  std::ofstream &log, bool dolog, bool &timeout);
 double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
-                        double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout);
+                        double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout, bool debug=false);
 // useful print routine
 void print_elim_order_string(Ints &order, Candidates &candidates, std::string &outstr);
 // useful string routine

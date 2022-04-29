@@ -89,7 +89,6 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 		ifstream infile(path);
 
 		// First line is list of candidates.
-		cout << "Reading Candidates" << endl;
 		boostcharsep spcom(",");
 		string line;
 		getline(infile, line);
@@ -124,7 +123,6 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 		// Skip next line (separator)
 		getline(infile, line);
 
-		cout << "Reading Ballots" << endl;
 		boostcharsep sp(",():");
 		
 		int cntr = ballots.size();
@@ -183,7 +181,6 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 			}
 		}
 
-		cout << "Finished reading ballots" << endl;
 		infile.close();
 	}
 	catch(exception &e)

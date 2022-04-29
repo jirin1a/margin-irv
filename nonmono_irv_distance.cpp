@@ -174,7 +174,8 @@ void get_promotion_set(const Candidate &winner, const Ballots &ballots, Sig2Sig 
 }
 
 double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
-                              double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
+                              double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout,
+                              bool debug) {
 
     double dist = -1.;
     try{
@@ -232,8 +233,8 @@ double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candid
             b[i] = IloNumVar(env, 0, ns, ILOINT, varname);
             obj += b[i];
             total_n += ns;
-            if (dolog) {
-                log << "JIRIDEBUG: (var, sig, sig): " << varname << ", (" << \
+            if (dolog && debug) {
+                log << "DEBUG: (var, sig, sig): " << varname << ", (" << \
                 join(sig2sig_pairs[i].first.begin(),sig2sig_pairs[i].first.end()) << "), (" << \
                 join(sig2sig_pairs[i].second.begin(),sig2sig_pairs[i].second.end()) << "), " << endl;
             }
@@ -261,8 +262,8 @@ double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candid
 //            sprintf(varname, "vys_%d", i);
             sprintf(varname, "vys_%s", (join(it->first.begin(), it->first.end(), "").c_str()));
             ys[i] = IloNumVar(env, 0, total_n, ILOINT, varname);
-            if (dolog) {
-                log << "JIRIDEBUG: (var corresponds to sig, n): " << varname << ", (" << \
+            if (dolog && debug) {
+                log << "DEBUG: (var corresponds to sig, n): " << varname << ", (" << \
                 join(it->first.begin(),it->first.end()) << ") " << it->second << endl;
             }
 
@@ -307,23 +308,29 @@ double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candid
                     }
                 ye_empty = false; // for all other opponents, reuse this expression
                 // add this duel to the model
-                cout << ye << " <= " << yopp << endl;
+//                cout << ye << " <= " << yopp << endl;
                 cmodel.add(ye <= yopp - 0.01);
             }
             // this cand is now eliminated
             defeated.insert(e);
         }
+        if (dolog && debug) {
+            log << "MODEL:";
+            log << cmodel << endl;
+            log << "ENDMODEL" << endl << endl;
+        }
 
         IloCplex cplex(cmodel);
-        cplex.exportModel("model.lp");
         if(dolog && config.optlog){
             cplex.setOut(log);
+            cplex.setError(log);
+            cplex.setWarning(log);
         }
         else{
             cplex.setOut(env.getNullStream());
+            cplex.setWarning(env.getNullStream());
         }
 
-        cplex.setWarning(env.getNullStream());
         if(tleft >= 0){
             cplex.setParam(IloCplex::TiLim, tleft);
         }
@@ -344,9 +351,10 @@ double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candid
         if (dolog) {
             IloNumArray soln(env);
             cplex.getValues(soln,b);
-            log << "SOLUTION = " << endl;
+            log << "SOLUTION (non-zero only) = " << endl;
             for(i=0; i<b.getSize(); ++i) {
-                log << b[i].getName() << " = " << soln[i] << endl;
+                if (soln[i] > 0)
+                    log << b[i].getName() << " = " << soln[i] << endl;
             }
             log << "END SOLUTION" << endl;
         }

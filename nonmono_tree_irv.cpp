@@ -113,7 +113,7 @@ void PruneFringe(NMFringe &fringe, double ubound, ostream &log, bool dolog) {
 
 double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
                          const Config &config, int upperbound,
-                         double timelimit, const char *logf, bool &timeout, int &dtcntr) {
+                         double timelimit, const char *logf, bool &timeout, int &dtcntr, bool debug) {
     try {
         mytimespec start;
         GetTime(&start);
@@ -201,7 +201,7 @@ double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const 
                 }
 
                 child.dist = nonmono_distance(irv_winner, ballots, cands, config, child,
-                                              curr_ubound, tleft, log, dolog, timeout);
+                                              curr_ubound, tleft, log, dolog, timeout, debug);
                 ++dtcntr;
 
                 if (dolog) {
