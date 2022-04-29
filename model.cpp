@@ -126,8 +126,10 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 		boostcharsep sp(",():");
 		
 		int cntr = ballots.size();
+        int linec = 3;
 		while(getline(infile, line))
 		{
+            linec ++;
 			vector<string> columns;
 			Split(line, sp, columns);
 
@@ -140,6 +142,12 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 				if(columns[i].empty()) continue;
 //				int ccode = ToType<int>(columns[i]);
                 string name = columns[i];
+                if (config.name2index.find(name) == config.name2index.end()) {
+                    cerr << "ERROR: Reading ballot file: unknown candidate name \"" <<
+                    name << "\" (line " << linec << " of " << path << ")." << endl;
+                    return false;
+                }
+
 				int index = config.name2index.find(name)->second;
 					
 				if(find(b.prefs.begin(),
