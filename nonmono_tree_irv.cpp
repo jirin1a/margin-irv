@@ -117,6 +117,7 @@ double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const 
     try {
         mytimespec start;
         GetTime(&start);
+        bool all_infeasible = true; // this will be reset if any distance > 0
 
         NMFringe fringe;
 
@@ -202,6 +203,7 @@ double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const 
 
                 child.dist = nonmono_distance(irv_winner, ballots, cands, config, child,
                                               curr_ubound, tleft, log, dolog, timeout, debug);
+                all_infeasible = (child.dist > -1) ? false: true;
                 ++dtcntr;
 
                 if (dolog) {
@@ -280,12 +282,10 @@ double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const 
         if (dolog) {
             log.close();
         }
-
-        if (timeout) {
-            return blower;
-        } else {
+        if (all_infeasible)
+            return -1;
+        else
             return curr_ubound;
-        }
     }
     catch (exception &e) {
         cout << "Exception raised in RunTreeIRV" << endl;
