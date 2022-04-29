@@ -54,8 +54,8 @@ int main(int argc, const char *argv[]) {
                     cerr << "ERROR: Ballot read error. Exiting." << endl;
                     return 1;
                 }
-                cout << "INFO: Done. Read " << ballots.size() << " signatures and " << candidates.size() \
-                << " candidates." << endl;
+                cout << "INFO: Done. Read " << ballots.size() << " signatures, " << config.totalvotes \
+                << " total votes and " << candidates.size() << " candidates." << endl;
 
                 ++i;
             } else if (strcmp(argv[i], "-simlog") == 0) {
