@@ -203,6 +203,9 @@ double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const 
 
                 child.dist = nonmono_distance(irv_winner, ballots, cands, config, child,
                                               curr_ubound, tleft, log, dolog, timeout, debug);
+                if (child.dist == -2) {
+                    return -2;
+                }
                 all_infeasible = (child.dist > -1) ? false: true;
                 ++dtcntr;
 

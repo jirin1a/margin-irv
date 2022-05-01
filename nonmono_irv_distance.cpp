@@ -367,6 +367,10 @@ double nonmono_distance(const Candidate &w, const Ballots &ballots, const Candid
         if (e.getStatus() == CPXERR_NO_SOLN) {
             return(-1);
         }
+        if (e.getStatus() == CPXERR_RESTRICTED_VERSION) {
+            cerr << e.getMessage() << endl;
+            return(-2);
+        }
         stringstream ss;
         ss << "CPLEX error in STV distance calc: " << e.getMessage() << "Status code = " << e.getStatus() << endl;
         throw STVException(ss.str());

@@ -12,7 +12,7 @@
 #include <cmath>
 #include "nonmono_tree_irv.h"
 #include "nonmono_irv_distance.h"
-#define YELLOW "\u001b[33;1m"
+#define YELLOW "\e[1;93m"
 #define BLUE "\033[94m"
 #define GREEN "\033[92m"
 #define RED "\033[1m\033[91m"
@@ -136,8 +136,10 @@ int main(int argc, const char *argv[]) {
         if (r == -1) {
             // No feasible non-monotone solution
             resultstr = (string)GREEN + "PASS" + (string)ENDC;
-        } else {
+        } else if (r >= 0){
             resultstr = (string)RED + "FAIL" + (string)ENDC;
+        } else if (r == -2) {
+            resultstr = (string)YELLOW + "N/A" + (string)ENDC;
         }
         cout << "RESULT(monotonicity): " << resultstr << endl;
         mytimespec tend;
