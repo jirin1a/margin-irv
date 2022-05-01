@@ -28,6 +28,8 @@ void usage(void) {
     cerr << "\t-debug\t\t: log more details into logfile" << endl;
     cerr << "\t-tlimit <nsecs>\t: set maximum run time" << endl;
     cerr << "\t-logfile <fn>\t: dump logging to thisfile" << endl;
+    cerr << "\t-allowties\t: also consider equalities in elimination constraints." << endl;
+    cerr << "\t-help/-h\t: show this help" << endl;
 }
 
 int main(int argc, const char *argv[]) {
@@ -60,8 +62,13 @@ int main(int argc, const char *argv[]) {
                 ++i;
             } else if (strcmp(argv[i], "-simlog") == 0) {
                 simlog = true;
+            } else if (strncmp(argv[i], "-h", 2) == 0) {
+                usage();
             } else if (strcmp(argv[i], "-optlog") == 0) {
                 config.optlog = true;
+            } else if (strcmp(argv[i], "-allowties") == 0) {
+                cout << "INFO: Will allow ties in elimination constraints." << endl;
+                config.allowties = true;
             } else if (strcmp(argv[i], "-debug") == 0) {
                 cout << "INFO: Will log debug info." << endl;
                 config.debug = true;
@@ -117,8 +124,7 @@ int main(int argc, const char *argv[]) {
             node.elim_seq = elim_order;
             node.dist = -1;
             double objval = nonmono_distance(candidates[winner], ballots, candidates, config, node,
-                                             -1., -1., log, true, timeout_flag,
-                                             config.debug);
+                                             -1., -1., log, true, timeout_flag);
             cout << "JIRIDEBUG: objval = " << objval << endl;
             if (log.is_open())
                 log.close();

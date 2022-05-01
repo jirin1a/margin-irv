@@ -57,13 +57,14 @@ struct Config
 	bool compbounds;
 	bool optlog;
     bool debug;
+    bool allowties;
 
     std::map<std::string,int> name2index;
     std::map<int, std::string> index2name;
 	Strings elect_only;
 
 	Config() : ncandidates(0), totalvotes(0), tightbounds(false),
-		compbounds(false), optlog(false), debug(false) {}
+		compbounds(false), optlog(false), debug(false), allowties(false) {}
 };
 
 class STVException
