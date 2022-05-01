@@ -201,8 +201,8 @@ double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const 
                     continue;
                 }
 
-                child.dist = nonmono_distance(irv_winner, ballots, cands, config, child,
-                                              curr_ubound, tleft, log, dolog, timeout);
+                child.dist = promoting_nonmono_distance(irv_winner, ballots, cands, config, child,
+                                                        curr_ubound, tleft, log, dolog, timeout);
                 if (child.dist == -2) {
                     return -2;
                 }
