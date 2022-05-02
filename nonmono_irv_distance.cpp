@@ -436,8 +436,8 @@ double promoting_nonmono_distance(const Candidate &w, const Ballots &ballots, co
 }
 
 
-double demoting_nonmono_distance(const Candidate &w, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
-                                  double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
+double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
+                                 double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
 
     double dist = -1.;
     try{
@@ -455,7 +455,7 @@ double demoting_nonmono_distance(const Candidate &w, const Ballots &ballots, con
         IloModel cmodel(env);
 
         Sig2Sig D;
-        get_demotion_set(w, ballots, cand, D);
+        get_demotion_set(target_cand, ballots, cand, D);
         // Create a linear array with transition pairs
         vector<Sig2SigPair> sig2sig_pairs;
         for(Sig2Sig::const_iterator i = D.cbegin(); i != D.cend(); ++i) {

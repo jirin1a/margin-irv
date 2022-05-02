@@ -64,6 +64,7 @@ int main(int argc, const char *argv[]) {
                 simlog = true;
             } else if (strncmp(argv[i], "-h", 2) == 0) {
                 usage();
+                exit(-1);
             } else if (strcmp(argv[i], "-optlog") == 0) {
                 config.optlog = true;
             } else if (strcmp(argv[i], "-allowties") == 0) {
@@ -136,8 +137,8 @@ int main(int argc, const char *argv[]) {
         // Run branch and bound
         bool timeout = false;
         int dtcntr = 0;
-        double r = RunNonmonoTreeIRV(ballots, candidates, cw, config,
-                                     upperbound, timelimit, logf, timeout, dtcntr, config.debug);
+        double r = RunPromotingNonmonoTreeIRV(ballots, candidates, cw, config,
+                                              upperbound, timelimit, logf, timeout, dtcntr);
         string resultstr;
         if (r == -1) {
             // No feasible non-monotone solution

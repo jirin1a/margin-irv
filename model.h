@@ -173,12 +173,13 @@ struct NMNode{  // NM abbreviates NonMono
     // Set of candidates *not* in elimination sequence
     SInts remcand;
 
-    // index of the original IRV winner
-    int irv_winner;
+    // this variable has varying use: (1) index of the original IRV winner in promoting NM tests
+    // (2) demotion candidate whom we want to win
+    int reference_target;
 
-    explicit NMNode(int winner) {
+    explicit NMNode(int reference_target) {
         dist = -1;
-        irv_winner = winner;
+        reference_target = reference_target;
     }
 
     void Reset(){

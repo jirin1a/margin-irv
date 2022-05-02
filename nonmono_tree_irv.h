@@ -37,7 +37,10 @@
 //   RETURNS
 //   margin:     Margin for election (or lower bound on margin if
 //               search times out).
-double RunNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
-                         const Config &config, int upperbound,
-                         double timelimit, const char *logf, bool &timeout, int &dtcntr, bool debug=false);
+double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
+                                  const Config &config, int upperbound,
+                                  double timelimit, const char *logf, bool &timeout, int &dtcntr);
+double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
+                                  const Config &config, int upperbound,
+                                  double timelimit, const char *logf, bool &timeout, int &dtcntr);
 #endif
