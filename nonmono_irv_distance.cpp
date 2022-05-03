@@ -14,10 +14,10 @@ jn/04/2022
 #include "nonmono_irv_distance.h"
 using namespace std;
 
-void print_elim_order_string(Ints &order, Candidates &candidates, std::string &outstr) {
+void print_elim_order_string(const Ints &order, const Candidates &candidates, std::string &outstr) {
     std::string ws(" ");
     for(int i=0; i<order.size(); i++) {
-        outstr += ws + candidates[order[i]].name;
+        outstr += ws + candidates[order[i]].name + "(" + to_string(candidates[order[i]].index) + ")";
         ws = " -> ";
     }
 }
@@ -443,7 +443,11 @@ double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ba
     try{
         Ints elim_order = node.elim_seq;  // this elim order may be partial (or full)
         const int partial_ncand = elim_order.size();
-
+        if (dolog) {
+            string auxstr;
+            print_elim_order_string(elim_order, cand, auxstr);
+            log << "INFO: Entering nonmono distance with (possibly partial) elimination sequence: " << auxstr << endl;
+        }
         // convert Ballots to a map signature->count
         Sig2N sig2n;
         ballots_to_sigcounts(ballots, sig2n);

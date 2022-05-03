@@ -17,7 +17,7 @@ double promoting_nonmono_distance(const Candidate &w, const Ballots &ballots, co
 double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
                                  double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout);
 // useful print routine
-void print_elim_order_string(Ints &order, Candidates &candidates, std::string &outstr);
+void print_elim_order_string(const Ints &order, const Candidates &candidates, std::string &outstr);
 // useful string routine
 template<typename InputIt> std::string join(InputIt first,
                  InputIt last, const std::string& separator = ", ", const std::string& concluder = "");

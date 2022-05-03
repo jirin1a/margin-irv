@@ -189,7 +189,7 @@ int main(int argc, const char *argv[]) {
                 for (ci = candidates.begin(); ci != candidates.end(); ++ci) {
                     if (*ci == cw)
                         continue;  // we ain't demoting the actual winner
-                    if (dolog) log << "INFO: Loser " << ci->index << " (" << ci->name << "):" << endl;
+                    if (dolog) log << endl << "INFO (Demotion Loop): Checking loser " << ci->index << " (" << ci->name << "):" << endl;
                     double r = RunDemotingNonmonoTreeIRV(ballots, candidates, cw, *ci,
                                                          (const Config&) config, (int) upperbound,
                                                          (double) timelimit, log, timeout, dtcntr);
