@@ -39,8 +39,8 @@
 //               search times out).
 double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
                                   const Config &config, int upperbound,
-                                  double timelimit, const char *logf, bool &timeout, int &dtcntr);
+                                  double timelimit, std::ofstream &log, bool &timeout, int &dtcntr);
 double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
-                                  const Config &config, int upperbound,
-                                  double timelimit, const char *logf, bool &timeout, int &dtcntr);
+                                 const Candidate &demotion_target, const Config &config, int upperbound,
+                                 double timelimit, std::ofstream &log, bool &timeout, int &dtcntr);
 #endif

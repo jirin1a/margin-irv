@@ -58,13 +58,14 @@ struct Config
 	bool optlog;
     bool debug;
     bool allowties;
+    bool demoting_nonmono_test_all_losers;
 
     std::map<std::string,int> name2index;
     std::map<int, std::string> index2name;
 	Strings elect_only;
 
 	Config() : ncandidates(0), totalvotes(0), tightbounds(false),
-		compbounds(false), optlog(false), debug(false), allowties(false) {}
+		compbounds(false), optlog(false), debug(false), allowties(false), demoting_nonmono_test_all_losers(false) {}
 };
 
 class STVException
@@ -177,9 +178,9 @@ struct NMNode{  // NM abbreviates NonMono
     // (2) demotion candidate whom we want to win
     int reference_target;
 
-    explicit NMNode(int reference_target) {
+    explicit NMNode(int _reference_target) {
         dist = -1;
-        reference_target = reference_target;
+        reference_target = _reference_target;
     }
 
     void Reset(){

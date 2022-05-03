@@ -140,7 +140,7 @@ void PruneFringe(NMFringe &fringe, double ubound, ostream &log, bool dolog) {
 
 double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
                                   const Config &config, int upperbound,
-                                  double timelimit, const char *logf, bool &timeout, int &dtcntr) {
+                                  double timelimit, ofstream &log, bool &timeout, int &dtcntr) {
     try {
         mytimespec start;
         GetTime(&start);
@@ -148,15 +148,8 @@ double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cand
 
         NMFringe fringe;
 
-        ofstream log;
-        bool dolog = false;
-        if (logf != NULL) {
-            log.open(logf);
-            dolog = true;
-        }
+        bool dolog = log.is_open();
 
-        // TODO need to debug ./analyzeirv -ballots data/profile_format/2021_UCty_and_Moab.sheet_Woodland_Hills_Mayor.seat_1.txt -logfile log.txt
-        // suddenly returns margin 0 ??
         // BUILD FRINGE: Initialize with each of the candidates as first to be eliminated
         for (int i = 0; i < cands.size(); ++i) {
             NMNode newn(irv_winner.index);  // reference_target is passed for later reference
@@ -297,7 +290,6 @@ double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cand
             log << "Distance calls: " << dtcntr << endl;
             log << "Margin: " << curr_ubound << endl;
             log << "====================================" << endl;
-            log.close();
         }
 
         double blower = curr_ubound;
@@ -311,9 +303,6 @@ double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cand
                 blower << "," << curr_ubound << "]" << endl;
         }
 
-        if (dolog) {
-            log.close();
-        }
         if (all_infeasible)
             return -1;
         else
@@ -340,7 +329,7 @@ double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cand
 
 double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
                                   const Candidate &demotion_target, const Config &config, int upperbound,
-                                  double timelimit, const char *logf, bool &timeout, int &dtcntr) {
+                                  double timelimit, ofstream &log, bool &timeout, int &dtcntr) {
     try {
         mytimespec start;
         GetTime(&start);
@@ -348,12 +337,7 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
 
         NMFringe fringe;
 
-        ofstream log;
-        bool dolog = false;
-        if (logf != NULL) {
-            log.open(logf);
-            dolog = true;
-        }
+        bool dolog = log.is_open();
 
         // BUILD FRINGE: Initialize with each of the candidates except target as first to be eliminated
         for (int i = 0; i < cands.size(); ++i) {
@@ -497,7 +481,6 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
             log << "Distance calls: " << dtcntr << endl;
             log << "Margin: " << curr_ubound << endl;
             log << "====================================" << endl;
-            log.close();
         }
 
         double blower = curr_ubound;
@@ -511,9 +494,6 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
                 blower << "," << curr_ubound << "]" << endl;
         }
 
-        if (dolog) {
-            log.close();
-        }
         if (all_infeasible)
             return -1;
         else
