@@ -419,7 +419,9 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
                 if (child.dist == -2) {
                     return -2;
                 }
-                all_infeasible = all_infeasible && (child.dist <= -1);
+                // update final return flag but only if this was a full eliimination sequence
+                if (child.remcand.empty())
+                    all_infeasible = all_infeasible && (child.dist <= -1);
                 ++dtcntr;
 
                 if (dolog) {
