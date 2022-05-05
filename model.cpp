@@ -115,6 +115,9 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 		getline(infile, line);
 		columns.clear();
 		Split(line, spcom, columns);
+        if (columns.size() != candidates.size()) {
+            throw STVException("ERROR: Reading ballot file - party affiliations do not match candidates.");
+        }
 		for(int i = 0; i < columns.size(); ++i)
 		{
 			candidates[i].party = columns[i];
