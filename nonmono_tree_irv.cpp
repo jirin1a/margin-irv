@@ -519,4 +519,200 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
 }
 
 
+double RunDemotingNoshowTreeIRV(int mode, const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
+                                const Candidate &noshow_target, const Config &config, int upperbound,
+                                double timelimit, ofstream &log, bool &timeout, int &dtcntr) {
+    /*
+     * Runs two variants of no-show:
+     * MODE_NOSHOW_BOTTOM - adding ballots ranking a loser bottom make the loser win
+     * MODE_NOSHOW_TOP - removing ballots ranking a loser top makes the loser win
+     */
+    try {
+        mytimespec start;
+        GetTime(&start);
+        bool all_infeasible = true; // this will be reset if any distance > 0
+
+        NMFringe fringe;
+
+        bool dolog = log.is_open();
+
+        // BUILD FRINGE: Initialize with each of the candidates except target as first to be eliminated
+        for (int i = 0; i < cands.size(); ++i) {
+            if (i == noshow_target.index)
+                continue;  // we don't want this guy eliminated - he should win!
+            NMNode newn(noshow_target.index);
+            newn.dist = 0;
+            newn.elim_seq.push_back(i);
+            for (int j = 0; j < cands.size(); ++j) {
+                if (j != i)
+                    newn.remcand.insert(j);
+            }
+            if (newn.dist >= 0 && newn.dist < upperbound) {
+                InsertIntoFringe(newn, fringe);
+            }
+        }
+
+        Ints best_order_c;
+        double curr_ubound = upperbound;
+
+        timeout = false;
+        while (!fringe.empty()) {
+            if (dolog) {
+                PrintFringe(fringe, log);
+                log << "CURRENT UPPER BOUND = " << curr_ubound << endl;
+            }
+
+            double blower = curr_ubound;
+            for (NMFringe::const_iterator it = fringe.begin();
+                 it != fringe.end(); ++it) {
+                blower = min(blower, it->dist);
+            }
+
+            if (dolog) {
+                log << "BEST LOWER BOUND = " << blower << endl;
+            }
+
+            mytimespec tnow;
+            GetTime(&tnow);
+
+            // Expand first node in fringe: Get/evaluate children
+            NMNode expand = *(fringe.begin());
+            fringe.erase(fringe.begin());
+
+            if (dolog) {
+                log << "Expanding ";
+                PrintNode(expand, log);
+                log << endl;
+            }
+
+            NMNodes children;
+            DemotingNonmono_ExpandToGetChildren(expand, children);
+
+            double tleft = -1;
+            int nchildrenadded = 0;
+            for (int i = 0; i < children.size(); ++i) {
+                if (timelimit != -1) {
+                    mytimespec tnow;
+                    GetTime(&tnow);
+
+                    tleft = timelimit - (tnow.seconds - start.seconds);
+                    if (tleft <= 0) {
+                        timeout = true;
+                        break;
+                    }
+                }
+
+                NMNode &child = children[i];
+
+                if (child.dist >= curr_ubound) {
+                    if (dolog) {
+                        log << "    skipping child" << endl;
+                    }
+                    continue;
+                }
+
+                child.dist = demoting_nonmono_distance(noshow_target, ballots, cands, config, child,
+                                                       curr_ubound, tleft, log, dolog, timeout);
+                if (child.dist == -2) {
+                    return -2;
+                }
+                // update final return flag but only if this was a full eliimination sequence
+                if (child.remcand.empty())
+                    all_infeasible = all_infeasible && (child.dist <= -1);
+                ++dtcntr;
+
+                if (dolog) {
+                    log << "    DT value: " << child.dist << endl;
+                }
+
+                if (timeout) {
+                    break;
+                }
+
+                if (child.dist < 0)
+                    continue;
+
+                if (child.dist >= 0 && child.dist < curr_ubound) {
+                    if (dolog) {
+                        log << "Adding node to fringe: ";
+                        PrintNode(child, log);
+                        log << endl;
+                    }
+                    InsertIntoFringe(child, fringe);
+                    nchildrenadded += 1;
+                }
+
+                if (child.remcand.empty() && child.dist < curr_ubound) {
+                    curr_ubound = child.dist;
+
+                    best_order_c = child.elim_seq;
+
+                    // Update current upper bound if a leaf found.
+                    PruneFringe(fringe, curr_ubound, log, dolog);
+                }
+            }
+
+            if (timeout) {
+                break;
+            }
+        }
+
+        mytimespec tnow;
+        GetTime(&tnow);
+        if (dolog) {
+            log << "TOTAL TIME USED SO FAR: " << tnow.seconds -
+                                                 start.seconds << endl;
+        }
+
+        if (dolog && !timeout) {
+            if (!best_order_c.empty()) {
+                log << "====================================" << endl;
+                log << "Minimal manipulation: " << curr_ubound << endl;
+                log << "Manipulated order: ";
+                for (int i = 0; i < best_order_c.size(); ++i) {
+                    log << cands[best_order_c[i]].name << " ";
+                }
+                log << endl;
+            } else {
+                log << "All nodes pruned " << endl;
+            }
+
+            log << "Distance calls: " << dtcntr << endl;
+            log << "Margin: " << curr_ubound << endl;
+            log << "====================================" << endl;
+        }
+
+        double blower = curr_ubound;
+        for (NMFringe::const_iterator it = fringe.begin();
+             it != fringe.end(); ++it) {
+            blower = min(blower, it->dist);
+        }
+
+        if (dolog && timeout) {
+            log << "Timeout: bounds on margin are [" <<
+                blower << "," << curr_ubound << "]" << endl;
+        }
+
+        if (all_infeasible)
+            return -1;
+        else
+            return curr_ubound;
+    }
+    catch (exception &e) {
+        cout << "Exception raised in RunTreeIRV" << endl;
+        cout << e.what() << endl;
+        return -1;
+    }
+    catch (STVException &e) {
+        cout << "Exception raised in RunTreeIRV" << endl;
+        cout << e.what() << endl;
+        return -1;
+    }
+    catch (...) {
+        cout << "Exception raised in RunTreeIRV" << endl;
+        cout << "Unexpected error." << endl;
+        return -1;
+    }
+}
+
 
