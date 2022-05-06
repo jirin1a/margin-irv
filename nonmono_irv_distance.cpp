@@ -13,8 +13,6 @@ jn/04/2022
 #include "ilcplex/cpxconst.h"  // error codes
 #include "nonmono_irv_distance.h"
 using namespace std;
-#define MODE_NOSHOW_TOP 1
-#define MODE_NOSHOW_BOTTOM 0
 
 void print_elim_order_string(const Ints &order, const Candidates &candidates, std::string &outstr) {
     std::string ws(" ");
@@ -706,8 +704,13 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
         if (dolog) {
             string auxstr;
             print_elim_order_string(elim_order, cand, auxstr);
-            log << "INFO: Entering noshow distance with (possibly partial) elimination sequence: " << auxstr << endl;
+            log << "INFO: Entering noshow distance (mode="<<mode<<") with (possibly partial) elimination sequence: "
+                << auxstr << endl;
         }
+
+        // create signatures-counts map
+        Sig2N sig2n;
+        ballots_to_sigcounts(ballots, sig2n);
 
         double lb = max(0.0, node.dist);
         double ub = max(lb, upperbound);  // ub may be revised later if upperbound < 0
@@ -715,80 +718,61 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
         IloEnv env;
         IloModel cmodel(env);
 
-        Ints S;
-        get_demotion_set(target_cand, ballots, cand, D);
-        // Create a linear array with transition pairs
-        vector<Sig2SigPair> sig2sig_pairs;
-        for(Sig2Sig::const_iterator i = D.cbegin(); i != D.cend(); ++i) {
-            for (set<Ints>::iterator auxi = i->second.begin(); auxi != i->second.end(); ++auxi) {
-                sig2sig_pairs.push_back(make_pair(i->first, *auxi));
-                // at this time, also expand signature-count map to add signatures that are new (with count=0)
-                if (sig2n.find(*auxi) == sig2n.end())
-                    sig2n[*auxi] = 0.;
-            }
-        }
+        set<Ints> S;
+        get_noshow_set(target_cand, cand, S, mode);
+        // add possibly zero-count combinations to sig2n
+        set<Ints>::const_iterator it;
+        for (it = S.begin(); it != S.end(); ++it)
+            if (sig2n.find(*it) == sig2n.end())
+                sig2n.insert(make_pair<Ints, double>(*it, 0.0));
 
-        IloNumVarArray d(env, sig2sig_pairs.size());
-        IloNumVarArray ys(env, sig2n.size());
+        IloNumVarArray a(env, S.size());
+        IloNumVarArray ys(env, S.size());
 
         char varname[1000];
 
         IloExpr obj(env);
         IloExpr balance(env);
-        int i;
 
-        // define ILP d_s1_s2 transitions. D variables are indexed shadowing sig2sig_pairs vector order
+        // define ILP
         int total_n = 0;
-        for(i = 0; i < sig2sig_pairs.size(); ++i) {
-            // d_s1_s2 - the demoting transition between two signatures. indexed via sig2sig_it vector
-            int ns = (int) sig2n[sig2sig_pairs[i].first]; // original signature count
-            sprintf(varname, "vd_%s", (join(sig2sig_pairs[i].first.begin(), sig2sig_pairs[i].first.end(), "")+\
-                "_" + join(sig2sig_pairs[i].second.begin(), sig2sig_pairs[i].second.end(), "")).c_str());
-            d[i] = IloNumVar(env, 0, ns, ILOINT, varname);
-            obj += d[i];
-            total_n += ns;
-            if (dolog && config.debug) {
-                log << "DEBUG: (var, sig, sig): " << varname << ", (" << \
-                join(sig2sig_pairs[i].first.begin(),sig2sig_pairs[i].first.end()) << "), (" << \
-                join(sig2sig_pairs[i].second.begin(),sig2sig_pairs[i].second.end()) << "), " << endl;
+        int i;
+        map<Ints, int> sig2ILPid; // keeps track of which ILP variable index belongs to whch signature
+        Sig2N::const_iterator si;
+        for(si = sig2n.begin(); si != sig2n.end(); ++si)
+            total_n += si->second;
+        for(i=0, si = sig2n.begin(); si != sig2n.end(); ++si) {
+            int ns = si->second;
+            // while we go over all signatures, we only define ILP vars for the bottom/top patterns
+            if (S.find(si->first) != S.end()) {// this is a relevant target signature
+                sig2ILPid.insert(make_pair(si->first, i));
+                sprintf(varname, "va_%s", join(si->first.begin(), si->first.end(), "").c_str());
+                if (dolog && config.debug) {
+                    log << "DEBUG: (var, sig): " << varname << ", (" << \
+                     join(si->first.begin(), si->first.end(), "") << ")" << endl;
+                }
+                // a_s is the count of signatures where target is bottom/top (dep. on mode) added/subtracted
+                switch (mode) {
+                    case MODE_NOSHOW_BOTTOM:
+                        a[i] = IloNumVar(env, 0, total_n, ILOINT, varname); // note UB
+                        cmodel.add(ys[i] == ns + a[i]);
+//                        cmodel.add(a[i] >= 0);
+                        break;
+                    case MODE_NOSHOW_TOP:
+                        a[i] = IloNumVar(env, 0, ns, ILOINT, varname);
+                        cmodel.add(ys[i] == ns - a[i]);
+//                        cmodel.add(a[i] >= 0);
+//                        cmodel.add(a[i] <= ns);
+                        break;
+                    default:
+                        throw STVException("ERROR: Unknown mode in noshow_distance()");
+                }
+                obj += a[i];
+                i++;  // important!
+            } else {
+                sig2ILPid.insert(make_pair(si->first, -1));
             }
         }
-        // over all unique signatures
-        // collect sums over outgoing and incoming
-        Sig2N::const_iterator it;
-        for(i = 0, it = sig2n.cbegin(); i < sig2n.size(); ++i, ++it) {
-            IloExpr sum_s1(env);
-            bool sum_s1_empty = true;
-            // outgoing
-            for (int j = 0; j < sig2sig_pairs.size(); ++j)
-                if (sig2sig_pairs[j].first == it->first) {
-                    sum_s1 += d[j];
-                    sum_s1_empty = false;
-                }
-
-            // incoming
-            IloExpr sum_s2(env);
-            for (int j = 0; j < sig2sig_pairs.size(); ++j)
-                if (sig2sig_pairs[j].second == it->first) {
-                    sum_s2 += d[j];
-                }
-            int ns = (int) it->second;
-//            sprintf(varname, "vys_%d", i);
-            sprintf(varname, "vys_%s", (join(it->first.begin(), it->first.end(), "").c_str()));
-            ys[i] = IloNumVar(env, 0, total_n, ILOINT, varname);
-            if (dolog && config.debug) {
-                log << "DEBUG: (var corresponds to sig, n): " << varname << ", (" << \
-                join(it->first.begin(),it->first.end()) << ") " << it->second << endl;
-            }
-
-            cmodel.add(ns - sum_s1 + sum_s2 == ys[i]);    // balance equation (vote preservation)
-            if (! sum_s1_empty)
-                cmodel.add(sum_s1 <= ns);
-            sum_s1.end();
-            sum_s2.end();
-        }
-        if (upperbound < 0)
-            ub = total_n;
         cmodel.add(obj >= lb);
         cmodel.add(obj <= ub);
 
@@ -805,24 +789,33 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
                     continue;
                 IloExpr yopp(env);
                 // we have elim cand and an opponent, look for how many votes goes to each
-                for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it)
-                    for(Ints::const_iterator j = (it->first).begin(); j != (it->first).end(); ++j) {
-                        if (defeated.find(*j)!=defeated.end())
+                for(si = sig2n.begin(); si != sig2n.end(); ++si) {
+                    int ilp_var_index = sig2ILPid[si->first];  // <0 indicates not defined
+                    int ns = (int) (si->second);
+                    for (Ints::const_iterator j = (si->first).begin(); j != (si->first).end(); ++j) {
+                        if (defeated.find(*j) != defeated.end())
                             continue; // ignore cands previously eliminated
                         if (*j == e) {
-                            if (ye_empty) // do this only once
-                                ye += ys[i];
+                            if (ye_empty) { // do this only once
+                                if (ilp_var_index >= 0)
+                                    ye += ys[ilp_var_index];
+                                else
+                                    ye += ns;
+                            }
                             break;
                         } else if (*j == opp) {
-                            yopp += ys[i];
+                            if (ilp_var_index >= 0)
+                                yopp += ys[ilp_var_index];
+                            else
+                                yopp += ns;
                             break;
                         } else {
                             break;
                         }
                     }
+                }
                 ye_empty = false; // for all other opponents, reuse this expression
                 // add this "duel" to the model
-//                cout << ye << " <= " << yopp << endl;
                 if (config.allowties)
                     cmodel.add(ye <= yopp);
                 else
@@ -867,11 +860,11 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
 
         if (dolog) {
             IloNumArray soln(env);
-            cplex.getValues(soln,d);
+            cplex.getValues(soln,a);
             log << "SOLUTION (non-zero only) = " << endl;
-            for(i=0; i<d.getSize(); ++i) {
+            for(i=0; i<a.getSize(); ++i) {
                 if (soln[i] > 0)
-                    log << d[i].getName() << " = " << soln[i] << endl;
+                    log << a[i].getName() << " = " << soln[i] << endl;
             }
             log << "END SOLUTION" << endl;
         }
