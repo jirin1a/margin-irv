@@ -13,6 +13,8 @@ jn/04/2022
 #include "ilcplex/cpxconst.h"  // error codes
 #include "nonmono_irv_distance.h"
 using namespace std;
+#define MODE_NOSHOW_TOP 1
+#define MODE_NOSHOW_BOTTOM 0
 
 void print_elim_order_string(const Ints &order, const Candidates &candidates, std::string &outstr) {
     std::string ws(" ");
@@ -216,6 +218,50 @@ void get_demotion_set(const Candidate &target_candidate, const Ballots &ballots,
         D.insert(pair<Ints, set<Ints> >(ballots[di].prefs, prefs_set));
     }
 }
+
+bool cmp_ints(const int &a, const int &b) {
+    return a<=b;
+}
+
+void get_noshow_set(const Candidate &target_candidate, const Candidates &candidates,
+                           set<Ints> &S, int mode) {
+    /*
+      Generate a full set of signatures s.t. target_candidate appears bottom/top in the ballot
+      mode = {MODE_NOSHOW_BOTTOM==bottom, MODE_NOSHOW_TOP==top}
+      Returns: std::set
+    */
+    S.clear();
+    Ints CmL; // sequence of losers (cands minus loser)
+    for (int i=0; i<candidates.size(); ++i)
+        if (i != target_candidate.index)
+            CmL.push_back(i);
+    // generate permutations of everyone but target
+    set<Ints> perms;
+    do {
+        if (perms.find(CmL) == perms.end())
+            perms.insert(CmL);
+    } while(next_permutation(CmL.begin(), CmL.end(), cmp_ints));
+
+    // now append Loser to all of these to make L show up last in each sigature
+    set<Ints>::iterator i;
+    for (i = perms.begin(); i != perms.end(); ++i) {
+        Ints aux;
+        switch(mode) {
+            case MODE_NOSHOW_BOTTOM:
+                aux = *i;
+                aux.push_back(target_candidate.index);
+                break;
+            case MODE_NOSHOW_TOP:
+                aux.push_back(target_candidate.index);
+                aux.insert(aux.end(), i->begin(), i->end());
+                break;
+            default:
+                throw STVException("ERROR: Unknown mode in get_no_show()");
+        }
+        S.insert(aux);
+    }
+}
+
 
 void ballots_to_sigcounts(const Ballots &ballots, Sig2N &sig2n) {
     Ballots::const_iterator bi;
@@ -459,6 +505,217 @@ double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ba
         IloModel cmodel(env);
 
         Sig2Sig D;
+        get_demotion_set(target_cand, ballots, cand, D);
+        // Create a linear array with transition pairs
+        vector<Sig2SigPair> sig2sig_pairs;
+        for(Sig2Sig::const_iterator i = D.cbegin(); i != D.cend(); ++i) {
+            for (set<Ints>::iterator auxi = i->second.begin(); auxi != i->second.end(); ++auxi) {
+                sig2sig_pairs.push_back(make_pair(i->first, *auxi));
+                // at this time, also expand signature-count map to add signatures that are new (with count=0)
+                if (sig2n.find(*auxi) == sig2n.end())
+                    sig2n[*auxi] = 0.;
+            }
+        }
+
+        IloNumVarArray d(env, sig2sig_pairs.size());
+        IloNumVarArray ys(env, sig2n.size());
+
+        char varname[1000];
+
+        IloExpr obj(env);
+        IloExpr balance(env);
+        int i;
+
+        // define ILP d_s1_s2 transitions. D variables are indexed shadowing sig2sig_pairs vector order
+        int total_n = 0;
+        for(i = 0; i < sig2sig_pairs.size(); ++i) {
+            // d_s1_s2 - the demoting transition between two signatures. indexed via sig2sig_it vector
+            int ns = (int) sig2n[sig2sig_pairs[i].first]; // original signature count
+            sprintf(varname, "vd_%s", (join(sig2sig_pairs[i].first.begin(), sig2sig_pairs[i].first.end(), "")+\
+                "_" + join(sig2sig_pairs[i].second.begin(), sig2sig_pairs[i].second.end(), "")).c_str());
+            d[i] = IloNumVar(env, 0, ns, ILOINT, varname);
+            obj += d[i];
+            total_n += ns;
+            if (dolog && config.debug) {
+                log << "DEBUG: (var, sig, sig): " << varname << ", (" << \
+                join(sig2sig_pairs[i].first.begin(),sig2sig_pairs[i].first.end()) << "), (" << \
+                join(sig2sig_pairs[i].second.begin(),sig2sig_pairs[i].second.end()) << "), " << endl;
+            }
+        }
+        // over all unique signatures
+        // collect sums over outgoing and incoming
+        Sig2N::const_iterator it;
+        for(i = 0, it = sig2n.cbegin(); i < sig2n.size(); ++i, ++it) {
+            IloExpr sum_s1(env);
+            bool sum_s1_empty = true;
+            // outgoing
+            for (int j = 0; j < sig2sig_pairs.size(); ++j)
+                if (sig2sig_pairs[j].first == it->first) {
+                    sum_s1 += d[j];
+                    sum_s1_empty = false;
+                }
+
+            // incoming
+            IloExpr sum_s2(env);
+            for (int j = 0; j < sig2sig_pairs.size(); ++j)
+                if (sig2sig_pairs[j].second == it->first) {
+                    sum_s2 += d[j];
+                }
+            int ns = (int) it->second;
+//            sprintf(varname, "vys_%d", i);
+            sprintf(varname, "vys_%s", (join(it->first.begin(), it->first.end(), "").c_str()));
+            ys[i] = IloNumVar(env, 0, total_n, ILOINT, varname);
+            if (dolog && config.debug) {
+                log << "DEBUG: (var corresponds to sig, n): " << varname << ", (" << \
+                join(it->first.begin(),it->first.end()) << ") " << it->second << endl;
+            }
+
+            cmodel.add(ns - sum_s1 + sum_s2 == ys[i]);    // balance equation (vote preservation)
+            if (! sum_s1_empty)
+                cmodel.add(sum_s1 <= ns);
+            sum_s1.end();
+            sum_s2.end();
+        }
+        if (upperbound < 0)
+            ub = total_n;
+        cmodel.add(obj >= lb);
+        cmodel.add(obj <= ub);
+
+        cmodel.add(IloMinimize(env, obj));
+
+        // enforce elimination order
+        set<int> defeated;
+        for(int round = 0; round < elim_order.size() + (elim_order.size()==config.ncandidates ? - 1: 0); ++round) {
+            int e = elim_order[round];
+            IloExpr ye(env);
+            bool ye_empty = true;
+            for(int opp = 0; opp < config.ncandidates; ++opp) { //opp = opponent
+                if(e == opp || defeated.find(opp)!=defeated.end())
+                    continue;
+                IloExpr yopp(env);
+                // we have elim cand and an opponent, look for how many votes goes to each
+                for(i = 0, it = sig2n.begin(); it != sig2n.end(); ++i, ++it)
+                    for(Ints::const_iterator j = (it->first).begin(); j != (it->first).end(); ++j) {
+                        if (defeated.find(*j)!=defeated.end())
+                            continue; // ignore cands previously eliminated
+                        if (*j == e) {
+                            if (ye_empty) // do this only once
+                                ye += ys[i];
+                            break;
+                        } else if (*j == opp) {
+                            yopp += ys[i];
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                ye_empty = false; // for all other opponents, reuse this expression
+                // add this "duel" to the model
+//                cout << ye << " <= " << yopp << endl;
+                if (config.allowties)
+                    cmodel.add(ye <= yopp);
+                else
+                    cmodel.add(ye <= yopp - 0.01);
+            }
+            // this cand is now eliminated
+            defeated.insert(e);
+        }
+        if (dolog && config.debug) {
+            log << "MODEL:";
+            log << cmodel << endl;
+            log << "ENDMODEL" << endl << endl;
+        }
+
+        IloCplex cplex(cmodel);
+        if(dolog && config.optlog){
+            cplex.setOut(log);
+            cplex.setError(log);
+            cplex.setWarning(log);
+        }
+        else{
+            cplex.setOut(env.getNullStream());
+            cplex.setWarning(env.getNullStream());
+        }
+
+        if(tleft >= 0){
+            cplex.setParam(IloCplex::TiLim, tleft);
+        }
+
+        bool result = cplex.solve();
+
+        if(cplex.getCplexStatus() == IloCplex::Infeasible){
+            dist = -1;
+        }
+        else if(result){
+            dist = cplex.getObjValue();
+        }
+        else{
+            timeout = true;
+            dist = cplex.getObjValue();
+        }
+
+        if (dolog) {
+            IloNumArray soln(env);
+            cplex.getValues(soln,d);
+            log << "SOLUTION (non-zero only) = " << endl;
+            for(i=0; i<d.getSize(); ++i) {
+                if (soln[i] > 0)
+                    log << d[i].getName() << " = " << soln[i] << endl;
+            }
+            log << "END SOLUTION" << endl;
+        }
+
+        cplex.end();
+        cmodel.end();
+        env.end();
+
+    } catch(IloCplex::Exception e) {
+        if (e.getStatus() == CPXERR_NO_SOLN) {
+            return(-1);
+        }
+        if (e.getStatus() == CPXERR_RESTRICTED_VERSION) {
+            cerr << e.getMessage() << endl;
+            return(-2);
+        }
+        stringstream ss;
+        ss << "CPLEX error in STV distance calc: " << e.getMessage() << "Status code = " << e.getStatus() << endl;
+        throw STVException(ss.str());
+    }
+    catch(STVException &e)
+    {
+        throw e;
+    }
+    catch(...)
+    {
+        throw STVException("Unexpected error in STV distance calculation.");
+    }
+
+
+    return ceil(dist);
+}
+
+
+double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ballots, const Candidates &cand,
+                       const Config &config, NMNode &node,
+                       double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
+
+    double dist = -1.;
+    try{
+        Ints elim_order = node.elim_seq;  // this elim order may be partial (or full)
+        const int partial_ncand = elim_order.size();
+        if (dolog) {
+            string auxstr;
+            print_elim_order_string(elim_order, cand, auxstr);
+            log << "INFO: Entering noshow distance with (possibly partial) elimination sequence: " << auxstr << endl;
+        }
+
+        double lb = max(0.0, node.dist);
+        double ub = max(lb, upperbound);  // ub may be revised later if upperbound < 0
+
+        IloEnv env;
+        IloModel cmodel(env);
+
+        Ints S;
         get_demotion_set(target_cand, ballots, cand, D);
         // Create a linear array with transition pairs
         vector<Sig2SigPair> sig2sig_pairs;
