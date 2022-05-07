@@ -9,8 +9,8 @@
 typedef std::map<Ints, std::set<Ints> > Sig2Sig;
 typedef std::pair<Ints, Ints> Sig2SigPair;
 typedef std::map<Ints, double> Sig2N;
-#define MODE_NOSHOW_TOP 1
-#define MODE_NOSHOW_BOTTOM 0
+#define MODE_PARTICIPATION_REMOVE_W_BOTTOM 1
+#define MODE_PATICIPATION_ADD_L_BOTTOM 0
 
 //double distance(const Ballots &ballots, const Candidates &cand,
 //	const Config &config, Node &node, double upperbound,
@@ -19,9 +19,9 @@ double promoting_nonmono_distance(const Candidate &w, const Ballots &ballots, co
                                   double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout);
 double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ballots, const Candidates &cand, const Config &config, NMNode &node,
                                  double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout);
-double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ballots, const Candidates &cand,
-                       const Config &config, NMNode &node,
-                       double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout);
+double participation_failure_distance(int mode, const Candidate &target_cand, const Ballots &ballots, const Candidates &cand,
+                                      const Config &config, NMNode &node,
+                                      double upperbound, double tleft, std::ofstream &log, bool dolog, bool &timeout);
 // useful print routine
 void print_elim_order_string(const Ints &order, const Candidates &candidates, std::string &outstr);
 // useful string routine

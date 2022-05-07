@@ -221,11 +221,10 @@ bool cmp_ints(const int &a, const int &b) {
     return a<=b;
 }
 
-void get_noshow_set(const Candidate &target_candidate, const Candidates &candidates,
-                           set<Ints> &S, int mode) {
+void get_bottom_set(const Candidate &target_candidate, const Candidates &candidates, set<Ints> &S) {
     /*
-      Generate a full set of signatures s.t. target_candidate appears bottom/top in the ballot
-      mode = {MODE_NOSHOW_BOTTOM==bottom, MODE_NOSHOW_TOP==top}
+      Generate a full set of signatures s.t. target_candidate appears bottom in the ballot
+      The target_candidate can refer to winner or a loser (depending on use case).
       Returns: std::set
     */
     S.clear();
@@ -240,22 +239,11 @@ void get_noshow_set(const Candidate &target_candidate, const Candidates &candida
             perms.insert(CmL);
     } while(next_permutation(CmL.begin(), CmL.end(), cmp_ints));
 
-    // now append Loser to all of these to make L show up last in each sigature
     set<Ints>::iterator i;
     for (i = perms.begin(); i != perms.end(); ++i) {
         Ints aux;
-        switch(mode) {
-            case MODE_NOSHOW_BOTTOM:
-                aux = *i;
-                aux.push_back(target_candidate.index);
-                break;
-            case MODE_NOSHOW_TOP:
-                aux.push_back(target_candidate.index);
-                aux.insert(aux.end(), i->begin(), i->end());
-                break;
-            default:
-                throw STVException("ERROR: Unknown mode in get_no_show()");
-        }
+        aux = *i;
+        aux.push_back(target_candidate.index);
         S.insert(aux);
     }
 }
@@ -693,9 +681,13 @@ double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ba
 }
 
 
-double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ballots, const Candidates &cand,
-                       const Config &config, NMNode &node,
-                       double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
+double participation_failure_distance(int mode, const Candidate &target_cand, const Ballots &ballots, const Candidates &cand,
+                                      const Config &config, NMNode &node,
+                                      double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
+    /*
+     * in mode==MODE_BOTTOM_W.. the target_cand refers to a winner whose bottom-ballots are to be removed
+     * in mode==MODE_BOTTOM_L target_cand is a loser whose bottom-ballots are to be added
+     */
 
     double dist = -1.;
     try{
@@ -704,7 +696,7 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
         if (dolog) {
             string auxstr;
             print_elim_order_string(elim_order, cand, auxstr);
-            log << "INFO: Entering noshow distance (mode="<<mode<<") with (possibly partial) elimination sequence: "
+            log << "INFO: Entering participation fail distance (mode="<<mode<<") with (possibly partial) elimination sequence: "
                 << auxstr << endl;
         }
 
@@ -719,7 +711,7 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
         IloModel cmodel(env);
 
         set<Ints> S;
-        get_noshow_set(target_cand, cand, S, mode);
+        get_bottom_set(target_cand, cand, S);
         // add possibly zero-count combinations to sig2n
         set<Ints>::const_iterator it;
         for (it = S.begin(); it != S.end(); ++it)
@@ -737,13 +729,13 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
         // define ILP
         int total_n = 0;
         int i;
-        map<Ints, int> sig2ILPid; // keeps track of which ILP variable index belongs to whch signature
+        map<Ints, int> sig2ILPid; // keeps track of which ILP variable index belongs to which signature
         Sig2N::const_iterator si;
         for(si = sig2n.begin(); si != sig2n.end(); ++si)
             total_n += si->second;
         for(i=0, si = sig2n.begin(); si != sig2n.end(); ++si) {
             int ns = si->second;
-            // while we go over all signatures, we only define ILP vars for the bottom/top patterns
+            // while we go over all signatures, we only define ILP vars for the bottom patterns
             if (S.find(si->first) != S.end()) {// this is a relevant target signature
                 sig2ILPid.insert(make_pair(si->first, i));
                 sprintf(varname, "va_%s", join(si->first.begin(), si->first.end(), "").c_str());
@@ -753,19 +745,16 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
                 }
                 // a_s is the count of signatures where target is bottom/top (dep. on mode) added/subtracted
                 switch (mode) {
-                    case MODE_NOSHOW_BOTTOM:
+                    case MODE_PATICIPATION_ADD_L_BOTTOM:
                         a[i] = IloNumVar(env, 0, total_n, ILOINT, varname); // note UB
                         cmodel.add(ys[i] == ns + a[i]);
-//                        cmodel.add(a[i] >= 0);
                         break;
-                    case MODE_NOSHOW_TOP:
+                    case MODE_PARTICIPATION_REMOVE_W_BOTTOM:
                         a[i] = IloNumVar(env, 0, ns, ILOINT, varname);
                         cmodel.add(ys[i] == ns - a[i]);
-//                        cmodel.add(a[i] >= 0);
-//                        cmodel.add(a[i] <= ns);
                         break;
                     default:
-                        throw STVException("ERROR: Unknown mode in noshow_distance()");
+                        throw STVException("ERROR: Unknown mode in participation_failure_distance()");
                 }
                 obj += a[i];
                 i++;  // important!
@@ -775,7 +764,6 @@ double noshow_distance(int mode, const Candidate &target_cand, const Ballots &ba
         }
         cmodel.add(obj >= lb);
         cmodel.add(obj <= ub);
-
         cmodel.add(IloMinimize(env, obj));
 
         // enforce elimination order

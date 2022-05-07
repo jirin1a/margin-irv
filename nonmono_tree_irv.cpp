@@ -61,7 +61,7 @@ void PrintFringe(const NMFringe &fringe, ostream &log) {
 // candidate 'c' that is not in the node's current elimination order. In
 // each of these new nodes, 'c' is appended to the front of the 
 // elimination sequence. 
-void PromotingNonmono_ExpandToGetChildren(const NMNode &n, NMNodes &children) {
+void ExpandToGetChildren_PreventWinnerWinning(const NMNode &n, NMNodes &children) {
     // if this is the last round expansion, do not expand the original irv winner
     if (n.remcand.size() == 1 && *(n.remcand.begin()) == n.reference_target)
         return;
@@ -93,7 +93,7 @@ void PromotingNonmono_ExpandToGetChildren(const NMNode &n, NMNodes &children) {
 // for the desired winner). In
 // each of these new nodes, 'c' is appended to the front of the
 // elimination sequence.
-void DemotingNonmono_ExpandToGetChildren(const NMNode &n, NMNodes &children) {
+void ExpandToGetChildren_MakeLoserWin(const NMNode &n, NMNodes &children) {
     // expand by candidates from the remcand set.
     for (SInts::const_iterator it = n.remcand.begin(); it != n.remcand.end(); ++it) {
         // make sure we do not use reference_target (desired winner) up until the last round
@@ -113,6 +113,8 @@ void DemotingNonmono_ExpandToGetChildren(const NMNode &n, NMNodes &children) {
         children.push_back(newn);
     }
 }
+
+
 
 // Remove all nodes whose current scores/distance values are greater than
 // or equal to the current upper bound (ubound).
@@ -198,7 +200,7 @@ double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cand
             }
 
             NMNodes children;
-            PromotingNonmono_ExpandToGetChildren(expand, children);
+            ExpandToGetChildren_PreventWinnerWinning(expand, children);
 
             double tleft = -1;
             int nchildrenadded = 0;
@@ -389,7 +391,7 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
             }
 
             NMNodes children;
-            DemotingNonmono_ExpandToGetChildren(expand, children);
+            ExpandToGetChildren_MakeLoserWin(expand, children);
 
             double tleft = -1;
             int nchildrenadded = 0;
@@ -519,14 +521,15 @@ double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands
 }
 
 
-double RunDemotingNoshowTreeIRV(int mode, const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
-                                const Candidate &noshow_target, const Config &config, int upperbound,
-                                double timelimit, ofstream &log, bool &timeout, int &dtcntr) {
+double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
+                                    const Candidate &target, const Config &config, int upperbound,
+                                    double timelimit, ofstream &log, bool &timeout, int &dtcntr) {
     /*
-     * Runs two variants of no-show:
-     * MODE_NOSHOW_BOTTOM - adding ballots ranking a loser bottom make the loser win
-     * MODE_NOSHOW_TOP - removing ballots ranking a loser top makes the loser win
+     * Runs two variants of participation failure:
+     * MODE_PARTICIPATION_ADD_L_BOTTOM - adding ballots ranking a loser bottom make the loser win
+     * MODE_PARTICIPATION_REMOVE_W_BOTTOM - removing ballots ranking the winner bottom makes him stop winning
      */
+
     try {
         mytimespec start;
         GetTime(&start);
@@ -538,9 +541,9 @@ double RunDemotingNoshowTreeIRV(int mode, const Ballots &ballots, const Candidat
 
         // BUILD FRINGE: Initialize with each of the candidates except target as first to be eliminated
         for (int i = 0; i < cands.size(); ++i) {
-            if (i == noshow_target.index)
+            if (i == target.index)
                 continue;  // we don't want this guy eliminated - he should win!
-            NMNode newn(noshow_target.index);
+            NMNode newn(target.index);
             newn.dist = 0;
             newn.elim_seq.push_back(i);
             for (int j = 0; j < cands.size(); ++j) {
@@ -586,7 +589,18 @@ double RunDemotingNoshowTreeIRV(int mode, const Ballots &ballots, const Candidat
             }
 
             NMNodes children;
-            DemotingNonmono_ExpandToGetChildren(expand, children);
+            switch(mode) {
+                case MODE_PATICIPATION_ADD_L_BOTTOM:
+                    ExpandToGetChildren_MakeLoserWin(expand, children);
+                    break;
+                case MODE_PARTICIPATION_REMOVE_W_BOTTOM:
+                    ExpandToGetChildren_PreventWinnerWinning(expand, children);
+                    break;
+                default:
+                    throw STVException("ERROR: Unsupported mode: " + to_string(mode));
+                    // TODO HERE I STOPPED
+            }
+
 
             double tleft = -1;
             int nchildrenadded = 0;
@@ -611,7 +625,7 @@ double RunDemotingNoshowTreeIRV(int mode, const Ballots &ballots, const Candidat
                     continue;
                 }
 
-                child.dist = demoting_nonmono_distance(noshow_target, ballots, cands, config, child,
+                child.dist = demoting_nonmono_distance(target, ballots, cands, config, child,
                                                        curr_ubound, tleft, log, dolog, timeout);
                 if (child.dist == -2) {
                     return -2;
