@@ -598,7 +598,6 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
                     break;
                 default:
                     throw STVException("ERROR: Unsupported mode: " + to_string(mode));
-                    // TODO HERE I STOPPED
             }
 
 
@@ -625,8 +624,8 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
                     continue;
                 }
 
-                child.dist = demoting_nonmono_distance(target, ballots, cands, config, child,
-                                                       curr_ubound, tleft, log, dolog, timeout);
+                child.dist = participation_failure_distance(mode, target, ballots, cands, config, child,
+                                                            curr_ubound, tleft, log, dolog, timeout);
                 if (child.dist == -2) {
                     return -2;
                 }
