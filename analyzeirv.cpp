@@ -19,6 +19,8 @@
 #define ENDC "\033[0m"
 #define TASK_PROMOTING_NONMONO 0
 #define TASK_DEMOTING_NONMONO 1
+#define TASK_PARTICIPATION_BOTTOM_ADD 2
+#define TASK_PARTICIPATION_BOTTOM_REMOVE 3
 
 using namespace std;
 
@@ -32,7 +34,7 @@ void usage(void) {
     cerr << "\t-tlimit <nsecs>\t: set maximum run time" << endl;
     cerr << "\t-logfile <fn>\t: dump logging to thisfile" << endl;
     cerr << "\t-allowties\t: also consider equalities in elimination constraints." << endl;
-    cerr << "\t-demoting_nonmono_all_losers\t: will check all losers in demotion NM, even if a violation found" << endl;
+    cerr << "\t-test_all_losers\t: will check all losers in tasks 1,2,3 even if a first violation found" << endl;
     cerr << "\t-help/-h\t: show this help" << endl;
 }
 
@@ -74,9 +76,9 @@ int main(int argc, const char *argv[]) {
             } else if (strcmp(argv[i], "-allowties") == 0) {
                 cout << "INFO: Will allow ties in elimination constraints." << endl;
                 config.allowties = true;
-            } else if (strcmp(argv[i], "-demoting_nonmono_all_losers") == 0) {
-                cout << "INFO: Will performs all checks even if one violation found." << endl;
-                config.demoting_nonmono_test_all_losers = true;
+            } else if (strcmp(argv[i], "-test_all_losers") == 0) {
+                cout << "INFO: Will performs all loser checks even if one violation found." << endl;
+                config.test_all_losers = true;
             } else if (strcmp(argv[i], "-debug") == 0) {
                 cout << "INFO: Will log debug info." << endl;
                 config.debug = true;
@@ -85,7 +87,8 @@ int main(int argc, const char *argv[]) {
                 ++i;
             } else if (strcmp(argv[i], "-task") == 0 && i < argc - 1) {
                 task = atoi(argv[i + 1]);
-                if (!(task == TASK_DEMOTING_NONMONO || task == TASK_PROMOTING_NONMONO)) {
+                if (!(task == TASK_DEMOTING_NONMONO || task == TASK_PROMOTING_NONMONO ||
+                task == TASK_PARTICIPATION_BOTTOM_ADD || task == TASK_PARTICIPATION_BOTTOM_REMOVE)) {
                     cerr << "ERROR: Unknown task requested: " << task << endl;
                     exit(-1);
                 }
@@ -177,8 +180,8 @@ int main(int argc, const char *argv[]) {
                 } else {
                     cout << "INFO: Margin:     " << r << endl;
                 }
+                }
                 break;
-            }
             case TASK_DEMOTING_NONMONO: {
                 Candidates::const_iterator ci;
                 // test for all losers, i.e. C\w
@@ -196,7 +199,7 @@ int main(int argc, const char *argv[]) {
                     if (dolog) log << "INFO: result margin = " << r << endl;
                     if (r >= 0) {
                         result = (result < 0) ? r : min(r, result);
-                        if (!config.demoting_nonmono_test_all_losers)
+                        if (!config.test_all_losers)
                             break; // one fail is enough don't look for an even better fail
                     } else if (r == -2) {
                         result = -2;
@@ -219,8 +222,50 @@ int main(int argc, const char *argv[]) {
                 } else {
                     cout << "INFO: Margin:     " << result << endl;
                 }
+                }
                 break;
-            }
+            case TASK_PARTICIPATION_BOTTOM_ADD: {
+                Candidates::const_iterator ci;
+                // test for all losers, i.e. C\w
+                // if any loser comes back with r>0, bingo!
+                double result = -1;
+                if (dolog)
+                    log << "INFO: PARTICIPATION BOTTOM-ADD TASK. Checking losers, one by one:" << endl;
+                for (ci = candidates.begin(); ci != candidates.end(); ++ci) {
+                    if (*ci == cw)
+                        continue;  // skip the actual winner
+                    if (dolog) log << endl << "INFO (Demotion Loop): Checking loser " << ci->index << " (" << ci->name << "):" << endl;
+                    double r = RunBottomManipulationTreeIRV(MODE_PATICIPATION_ADD_L_BOTTOM,
+                                                            ballots, candidates, cw, *ci,
+                                                         (const Config&) config, (int) upperbound,
+                                                         (double) timelimit, log, timeout, dtcntr);
+                    if (dolog) log << "INFO: result margin = " << r << endl;
+                    if (r >= 0) {
+                        result = (result < 0) ? r : min(r, result);
+                        if (!config.test_all_losers)
+                            break; // one fail is enough don't look for an even better fail
+                    } else if (r == -2) {
+                        result = -2;
+                        break;  // ILP solver problem
+                    }
+                }
+                string resultstr;
+                if (result == -1) {
+                    // No feasible non-monotone solution
+                    resultstr = (string) GREEN + "PASS" + (string) ENDC;
+                } else if (result >= 0) {
+                    resultstr = (string) RED + "FAIL" + (string) ENDC;
+                } else if (result == -2) {
+                    resultstr = (string) YELLOW + "N/A" + (string) ENDC;
+                }
+                cout << "RESULT(participation-bottom-add): " << resultstr << endl;
+                if (dolog) log << "RESULT(participation-bottom-add): " << resultstr << endl;
+                if (timeout) {
+                    cout << "WARN: Timed out. Margin LB:  " << result << endl;
+                } else {
+                    cout << "INFO: Margin:     " << result << endl;
+                }}
+                break;
             default:
                 cerr << "ERROR: Unsupported task: " << task << endl;
         }

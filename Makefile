@@ -21,7 +21,7 @@ CXX = g++
 LD =
 SUFFIX = o
 
-CXXFLAGS = -O2 -Wall -pedantic -g $(INCLUDEDIRS) -m64 -fPIC \
+CXXFLAGS = -O0 -Wall -pedantic -g $(INCLUDEDIRS) -m64 -fPIC \
 	-fexceptions -DNEBUG -DIL_STD -Wno-long-long \
 	-Wno-attributes -Wno-ignored-attributes -fpermissive -Wno-sign-compare
 

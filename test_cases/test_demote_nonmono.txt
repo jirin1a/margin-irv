@@ -1,0 +1,6 @@
+A,B,C
+IND, IND, IND
+------
+(C,B,A) : 5
+(A,C,B) : 4
+(B,A,C) : 8

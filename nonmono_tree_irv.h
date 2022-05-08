@@ -43,4 +43,7 @@ double RunPromotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cand
 double RunDemotingNonmonoTreeIRV(const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
                                  const Candidate &demotion_target, const Config &config, int upperbound,
                                  double timelimit, std::ofstream &log, bool &timeout, int &dtcntr);
+double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Candidates &cands, const Candidate &irv_winner,
+                                    const Candidate &target, const Config &config, int upperbound,
+                                    double timelimit, std::ofstream &log, bool &timeout, int &dtcntr);
 #endif

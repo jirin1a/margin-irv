@@ -221,16 +221,16 @@ bool cmp_ints(const int &a, const int &b) {
     return a<=b;
 }
 
-void get_bottom_set(const Candidate &target_candidate, const Candidates &candidates, set<Ints> &S) {
+void get_bottom_set(const Candidate &target_cand, const Candidates &candidates, set<Ints> &S) {
     /*
       Generate a full set of signatures s.t. target_candidate appears bottom in the ballot
       The target_candidate can refer to winner or a loser (depending on use case).
       Returns: std::set
     */
     S.clear();
-    Ints CmL; // sequence of losers (cands minus loser)
+    Ints CmL; // permutations of all cands excluding the target (loser)
     for (int i=0; i<candidates.size(); ++i)
-        if (i != target_candidate.index)
+        if (i != target_cand.index)
             CmL.push_back(i);
     // generate permutations of everyone but target
     set<Ints> perms;
@@ -243,7 +243,7 @@ void get_bottom_set(const Candidate &target_candidate, const Candidates &candida
     for (i = perms.begin(); i != perms.end(); ++i) {
         Ints aux;
         aux = *i;
-        aux.push_back(target_candidate.index);
+        aux.push_back(target_cand.index);
         S.insert(aux);
     }
 }
@@ -681,9 +681,10 @@ double demoting_nonmono_distance(const Candidate &target_cand, const Ballots &ba
 }
 
 
-double participation_failure_distance(int mode, const Candidate &target_cand, const Ballots &ballots, const Candidates &cand,
-                                      const Config &config, NMNode &node,
-                                      double upperbound, double tleft, ofstream &log, bool dolog, bool &timeout) {
+double participation_failure_distance(int mode, const Candidate &target_cand, const Candidate &irv_winner,
+                                      const Ballots &ballots, const Candidates &cand, const Config &config,
+                                      NMNode &node, double upperbound, double tleft, ofstream &log, bool dolog,
+                                      bool &timeout) {
     /*
      * in mode==MODE_BOTTOM_W.. the target_cand refers to a winner whose bottom-ballots are to be removed
      * in mode==MODE_BOTTOM_L target_cand is a loser whose bottom-ballots are to be added
@@ -738,12 +739,14 @@ double participation_failure_distance(int mode, const Candidate &target_cand, co
             // while we go over all signatures, we only define ILP vars for the bottom patterns
             if (S.find(si->first) != S.end()) {// this is a relevant target signature
                 sig2ILPid.insert(make_pair(si->first, i));
-                sprintf(varname, "va_%s", join(si->first.begin(), si->first.end(), "").c_str());
+                sprintf(varname, "ys_%s", join(si->first.begin(), si->first.end(), "").c_str());
+                ys[i] = IloNumVar(env, 0, 2*total_n, ILOINT, varname);
                 if (dolog && config.debug) {
                     log << "DEBUG: (var, sig): " << varname << ", (" << \
                      join(si->first.begin(), si->first.end(), "") << ")" << endl;
                 }
                 // a_s is the count of signatures where target is bottom/top (dep. on mode) added/subtracted
+                sprintf(varname, "va_%s", join(si->first.begin(), si->first.end(), "").c_str());
                 switch (mode) {
                     case MODE_PATICIPATION_ADD_L_BOTTOM:
                         a[i] = IloNumVar(env, 0, total_n, ILOINT, varname); // note UB

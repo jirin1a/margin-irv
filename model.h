@@ -58,14 +58,14 @@ struct Config
 	bool optlog;
     bool debug;
     bool allowties;
-    bool demoting_nonmono_test_all_losers;
+    bool test_all_losers;
 
     std::map<std::string,int> name2index;
     std::map<int, std::string> index2name;
 	Strings elect_only;
 
 	Config() : ncandidates(0), totalvotes(0), tightbounds(false),
-		compbounds(false), optlog(false), debug(false), allowties(false), demoting_nonmono_test_all_losers(false) {}
+               compbounds(false), optlog(false), debug(false), allowties(false), test_all_losers(false) {}
 };
 
 class STVException

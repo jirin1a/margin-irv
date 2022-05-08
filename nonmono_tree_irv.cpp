@@ -624,7 +624,8 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
                     continue;
                 }
 
-                child.dist = participation_failure_distance(mode, target, ballots, cands, config, child,
+                child.dist = participation_failure_distance(mode, target, irv_winner, ballots, cands, config,
+                                                            child,
                                                             curr_ubound, tleft, log, dolog, timeout);
                 if (child.dist == -2) {
                     return -2;
