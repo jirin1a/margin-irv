@@ -1,0 +1,19 @@
+Q: "Loser drop-out paradox." An IRV-loser, by dropping out of the race, would change the winner. (The loser, also called a "spoiler," is B, and when B drops out the winner changes from A to C.) The same set of 3-candidate IRV elections also exhibit "Favorite betrayal paradox": a set of co-voting voters are better off "betraying their favorite" than honestly voting that favorite top, i.e. it is unstrategic to vote for a "spoiler."
+
+R: All scoring rules (including Plain Plurality, antiPlurality, Borda, etc) agree the winner is B, disagreeing with IRV's winner A. If you agree that "democracy" should elect the most-loved and least-hated candidate, then since in these situations B is both of those things simultaneously, you must agree IRV got the wrong winner in these situations.
+
+S: There is a Condorcet Cycle.
+
+T: The Plurality and IRV winners differ (i.e. Plurality=B, IRV=A).
+
+U: If some voters raise their ranking of the current winner, that makes him lose. (I.e. can raise A to top in some BAC and/or BCA votes to make C win.)
+
+V: If some voters lower their ranking of a current loser, that makes him win. (I.e. some voters can lower B to cause B to win.) Both this and the preceding are forms of non-monotonicity.
+
+W: Possible to delete voters ranking current winner bottom, such that he then loses. (I.e. can delete some BCA voters causing A to lose and C to win.)
+
+X: Possible to add new voters ranking a current loser bottom, such that he now wins. (I.e. can add CAB voters to make A lose and B win.) Both this and the preceding are forms of "participation failure."
+
+Y: Condorcet "beats-all" winner exists but IRV eliminates him. (I.e. the Condorcet winner is C.)
+
+Z: The IRV winner is the same if all ballots are reversed, i.e. the "best" candidate A according to IRV, is the same as the "worst" candidate according to IRV.
