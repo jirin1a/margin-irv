@@ -686,8 +686,8 @@ double participation_failure_distance(int mode, const Candidate &target_cand, co
                                       NMNode &node, double upperbound, double tleft, ofstream &log, bool dolog,
                                       bool &timeout) {
     /*
-     * in mode==MODE_BOTTOM_W.. the target_cand refers to a winner whose bottom-ballots are to be removed
-     * in mode==MODE_BOTTOM_L target_cand is a loser whose bottom-ballots are to be added
+     * in mode==MODE_PARTICIPATION_REMOVE_W_BOTTOM the target_cand refers to a winner whose bottom-ballots are to be removed
+     * in mode==MODE_PARTICIPATION_ADD_L_BOTTOM target_cand is a loser whose bottom-ballots are to be added
      */
 
     double dist = -1.;
@@ -748,7 +748,7 @@ double participation_failure_distance(int mode, const Candidate &target_cand, co
                 // a_s is the count of signatures where target is bottom/top (dep. on mode) added/subtracted
                 sprintf(varname, "va_%s", join(si->first.begin(), si->first.end(), "").c_str());
                 switch (mode) {
-                    case MODE_PATICIPATION_ADD_L_BOTTOM:
+                    case MODE_PARTICIPATION_ADD_L_BOTTOM:
                         a[i] = IloNumVar(env, 0, total_n, ILOINT, varname); // note UB
                         cmodel.add(ys[i] == ns + a[i]);
                         break;

@@ -62,22 +62,26 @@ void PrintFringe(const NMFringe &fringe, ostream &log) {
 // each of these new nodes, 'c' is appended to the front of the 
 // elimination sequence. 
 void ExpandToGetChildren_PreventWinnerWinning(const NMNode &n, NMNodes &children) {
+    /*
+     * expand by all with the only constraint that w (the "reference_target") is not placed last in the elim sequence.
+     */
     // if this is the last round expansion, do not expand the original irv winner
+    // this if condition should actually never be true, but leaving to make sure.
     if (n.remcand.size() == 1 && *(n.remcand.begin()) == n.reference_target)
         return;
-    for (SInts::const_iterator it = n.remcand.begin();
-         it != n.remcand.end(); ++it) {
-        // if this is the second-to-last round expansion, and the reference_target still hasn't been placed,
+    // expand current elim seq by all candidate remaining in "remcand"
+    for (SInts::const_iterator it = n.remcand.begin(); it != n.remcand.end(); ++it) {
+        // if this is the second-to-last round expansion, and the reference_target (irv winner) still hasn't been placed,
         // enforce expanding by the irv winner
         // (otherwise he will be the one left for the last round)
         if (n.remcand.size() == 2 && n.remcand.find(n.reference_target) != n.remcand.end() && *(it) != n.reference_target)
-            continue;
+            continue;  // this guy is a non-irv-winner and needs to be placed as winner, but do this in the next loop.
         NMNode newn(n.reference_target);
         newn.elim_seq = n.elim_seq;
         newn.elim_seq.push_back(*it);
         newn.remcand = n.remcand;
         newn.remcand.erase(*it);
-        if (newn.remcand.size()==1) { // add the very last candidate at the same time
+        if (newn.remcand.size()==1) { // add the very last candidate at the same time (and he is the non-irv-winner!)
             newn.elim_seq.push_back(*(newn.remcand.begin()));
             newn.remcand.erase(*(newn.remcand.begin()));
         }
@@ -526,8 +530,11 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
                                     double timelimit, ofstream &log, bool &timeout, int &dtcntr) {
     /*
      * Runs two variants of participation failure:
-     * MODE_PARTICIPATION_ADD_L_BOTTOM - adding ballots ranking a loser bottom make the loser win
-     * MODE_PARTICIPATION_REMOVE_W_BOTTOM - removing ballots ranking the winner bottom makes him stop winning
+     * (1) MODE_PARTICIPATION_ADD_L_BOTTOM - adding ballots ranking a loser bottom make the loser win
+     *     The target is the loser that needs to be eliminated last (wins)
+     * (2) MODE_PARTICIPATION_REMOVE_W_BOTTOM - removing ballots ranking the winner bottom makes him stop winning
+     *     The target is now the irv winner but the use of this variable changes: target must not be placed last
+     *     in the elimination sequence.
      */
 
     try {
@@ -539,9 +546,11 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
 
         bool dolog = log.is_open();
 
-        // BUILD FRINGE: Initialize with each of the candidates except target as first to be eliminated
+        // BUILD FRINGE: Initialize with each of the candidates
+        // except the target (which is the loser that should win) as first to be eliminated (this only in MODE_PARTICIPATION_ADD_L_BOTTOM)
+        // In contrast, in MODE_PARTICIPATION_REMOVE_W_BOTTOM, anybody can be eliminated as first.
         for (int i = 0; i < cands.size(); ++i) {
-            if (i == target.index)
+            if (mode == MODE_PARTICIPATION_ADD_L_BOTTOM && i == target.index)
                 continue;  // we don't want this guy eliminated - he should win!
             NMNode newn(target.index);
             newn.dist = 0;
@@ -590,7 +599,7 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
 
             NMNodes children;
             switch(mode) {
-                case MODE_PATICIPATION_ADD_L_BOTTOM:
+                case MODE_PARTICIPATION_ADD_L_BOTTOM:
                     ExpandToGetChildren_MakeLoserWin(expand, children);
                     break;
                 case MODE_PARTICIPATION_REMOVE_W_BOTTOM:
@@ -630,7 +639,7 @@ double RunBottomManipulationTreeIRV(int mode, const Ballots &ballots, const Cand
                 if (child.dist == -2) {
                     return -2;
                 }
-                // update final return flag but only if this was a full eliimination sequence
+                // update final return flag but only if this was a full elimination sequence
                 if (child.remcand.empty())
                     all_infeasible = all_infeasible && (child.dist <= -1);
                 ++dtcntr;

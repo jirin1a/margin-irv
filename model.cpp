@@ -87,6 +87,10 @@ bool ReadBallots(const char *path, Ballots &ballots, Candidates &candidates,
 	try
 	{
 		ifstream infile(path);
+        if (infile.fail()) {
+            cerr << "ERROR: Could not open the ballot file." << endl;
+            return false;
+        }
 
 		// First line is list of candidates.
 		boostcharsep spcom(",");

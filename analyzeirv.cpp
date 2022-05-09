@@ -235,10 +235,10 @@ int main(int argc, const char *argv[]) {
                     if (*ci == cw)
                         continue;  // skip the actual winner
                     if (dolog) log << endl << "INFO (Demotion Loop): Checking loser " << ci->index << " (" << ci->name << "):" << endl;
-                    double r = RunBottomManipulationTreeIRV(MODE_PATICIPATION_ADD_L_BOTTOM,
+                    double r = RunBottomManipulationTreeIRV(MODE_PARTICIPATION_ADD_L_BOTTOM,
                                                             ballots, candidates, cw, *ci,
-                                                         (const Config&) config, (int) upperbound,
-                                                         (double) timelimit, log, timeout, dtcntr);
+                                                            (const Config&) config, (int) upperbound,
+                                                            (double) timelimit, log, timeout, dtcntr);
                     if (dolog) log << "INFO: result margin = " << r << endl;
                     if (r >= 0) {
                         result = (result < 0) ? r : min(r, result);
@@ -260,6 +260,40 @@ int main(int argc, const char *argv[]) {
                 }
                 cout << "RESULT(participation-bottom-add): " << resultstr << endl;
                 if (dolog) log << "RESULT(participation-bottom-add): " << resultstr << endl;
+                if (timeout) {
+                    cout << "WARN: Timed out. Margin LB:  " << result << endl;
+                } else {
+                    cout << "INFO: Margin:     " << result << endl;
+                }}
+                break;
+            case TASK_PARTICIPATION_BOTTOM_REMOVE: {
+                Candidates::const_iterator ci;
+                // test for the winner
+                double result = -1;
+                if (dolog)
+                    log << "INFO: PARTICIPATION BOTTOM-REMOVE TASK:" << endl;
+                double r = RunBottomManipulationTreeIRV(MODE_PARTICIPATION_REMOVE_W_BOTTOM,
+                                                            ballots, candidates, cw, cw,
+                                                            (const Config&) config, (int) upperbound,
+                                                            (double) timelimit, log, timeout, dtcntr);
+                if (dolog) log << "INFO: result margin = " << r << endl;
+                if (r >= 0) {
+                    result = (result < 0) ? r : min(r, result);
+                } else if (r == -2) {
+                    result = -2;
+                    break;  // ILP solver problem
+                }
+                string resultstr;
+                if (result == -1) {
+                    // No feasible non-monotone solution
+                    resultstr = (string) GREEN + "PASS" + (string) ENDC;
+                } else if (result >= 0) {
+                    resultstr = (string) RED + "FAIL" + (string) ENDC;
+                } else if (result == -2) {
+                    resultstr = (string) YELLOW + "N/A" + (string) ENDC;
+                }
+                cout << "RESULT(participation-bottom-remove): " << resultstr << endl;
+                if (dolog) log << "RESULT(participation-bottom-remove): " << resultstr << endl;
                 if (timeout) {
                     cout << "WARN: Timed out. Margin LB:  " << result << endl;
                 } else {

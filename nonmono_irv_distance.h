@@ -10,7 +10,7 @@ typedef std::map<Ints, std::set<Ints> > Sig2Sig;
 typedef std::pair<Ints, Ints> Sig2SigPair;
 typedef std::map<Ints, double> Sig2N;
 #define MODE_PARTICIPATION_REMOVE_W_BOTTOM 1
-#define MODE_PATICIPATION_ADD_L_BOTTOM 0
+#define MODE_PARTICIPATION_ADD_L_BOTTOM 0
 
 //double distance(const Ballots &ballots, const Candidates &cand,
 //	const Config &config, Node &node, double upperbound,
